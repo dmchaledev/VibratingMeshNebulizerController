@@ -60,4 +60,11 @@ void     uart_send_uint16(uint16_t val);
 /* ---- Delays ---- */
 void     delay_ms(uint16_t ms);
 
+/* ---- HEF (High-Endurance Flash) — non-volatile storage ---- */
+#if FREQ_CACHE_ENABLED
+uint16_t hef_read_word(uint16_t addr);
+void     hef_erase_row(uint16_t row_addr);
+void     hef_write_words(uint16_t start_addr, const uint16_t *data, uint8_t count);
+#endif
+
 #endif /* PERIPHERALS_H */

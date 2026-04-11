@@ -143,7 +143,11 @@ void nco_disable(void)
  *
  * Output on RA2 (pin 4). Used as a voltage reference for the boost
  * converter feedback comparator. Higher DAC value = higher VBOOST.
+ *
+ * Only needed for BOOST_MODE_DISCRETE. When using a pre-built boost
+ * module (BOOST_MODE_MODULE), the DAC is not used.
  * ======================================================================== */
+#if BOOST_MODE == BOOST_MODE_DISCRETE
 static void dac_init(void)
 {
     /* DAC1: output enabled, positive source = VDD, negative source = VSS */
@@ -155,12 +159,17 @@ static void dac_init(void)
     /* Start at soft-start value */
     DAC1CON1 = BOOST_STARTUP_DAC;
 }
+#endif /* BOOST_MODE_DISCRETE */
 
 void dac_set_value(uint8_t val)
 {
+#if BOOST_MODE == BOOST_MODE_DISCRETE
     if (val > BOOST_MAX_DAC)
         val = BOOST_MAX_DAC;    /* Safety clamp */
     DAC1CON1 = val & 0x1F;     /* 5-bit DAC: mask to 0-31 */
+#else
+    (void)val;                  /* No-op when using boost module */
+#endif
 }
 
 /* ========================================================================
@@ -210,7 +219,11 @@ uint16_t adc_read(uint8_t channel)
  *
  * In this design, CWG passes the NCO signal through to the boost MOSFET
  * with configurable dead-band control to prevent shoot-through.
+ *
+ * Only needed for BOOST_MODE_DISCRETE. When using a pre-built boost
+ * module (BOOST_MODE_MODULE), the CWG is not used.
  * ======================================================================== */
+#if BOOST_MODE == BOOST_MODE_DISCRETE
 static void cwg_init(void)
 {
     /* Route CWG1A output to RA4 via PPS */
@@ -234,6 +247,7 @@ static void cwg_init(void)
     CWG1CON1 = 0x00;           /* No auto-shutdown */
     CWG1CON2 = 0x00;           /* No auto-restart */
 }
+#endif /* BOOST_MODE_DISCRETE */
 
 /* ========================================================================
  * Timer1 — Treatment Duration Timer
@@ -371,12 +385,92 @@ void system_init(void)
     osc_init();
     gpio_init();
     nco_init();
+#if BOOST_MODE == BOOST_MODE_DISCRETE
     dac_init();
+#endif
     adc_init();
+#if BOOST_MODE == BOOST_MODE_DISCRETE
     cwg_init();
+#endif
     timer1_init();
 
 #if UART_ENABLED
     uart_init();
 #endif
 }
+
+/* ========================================================================
+ * HEF (High-Endurance Flash) — Non-Volatile Data Storage
+ *
+ * The PIC16F1713 has 128 words of High-Endurance Flash at the end of
+ * program memory (0x1F80-0x1FFF). This is organized in 4 rows of 32 words.
+ * We use Row 0 (0x1F80-0x1F9F) to cache the last known resonant frequency
+ * so the controller can start faster on the next power cycle.
+ *
+ * HEF endurance: ~100,000 erase/write cycles (vs ~10,000 for regular flash).
+ * At one save per treatment session, this lasts decades.
+ * ======================================================================== */
+#if FREQ_CACHE_ENABLED
+
+uint16_t hef_read_word(uint16_t addr)
+{
+    PMADRH = (uint8_t)(addr >> 8);
+    PMADRL = (uint8_t)(addr & 0xFF);
+    PMCON1bits.CFGS = 0;    /* Access program memory, not config */
+    PMCON1bits.RD = 1;      /* Initiate read */
+    NOP();
+    NOP();
+    return (uint16_t)((PMDATH << 8) | PMDATL);
+}
+
+void hef_erase_row(uint16_t row_addr)
+{
+    PMADRH = (uint8_t)(row_addr >> 8);
+    PMADRL = (uint8_t)(row_addr & 0xFF);
+    PMCON1bits.CFGS = 0;
+    PMCON1bits.FREE = 1;    /* Select row erase operation */
+    PMCON1bits.WREN = 1;    /* Enable writes */
+
+    /* Required unlock sequence (interrupts already disabled in this firmware) */
+    INTCONbits.GIE = 0;
+    PMCON2 = 0x55;
+    PMCON2 = 0xAA;
+    PMCON1bits.WR = 1;      /* Execute erase */
+    NOP();
+    NOP();
+
+    PMCON1bits.WREN = 0;
+}
+
+void hef_write_words(uint16_t start_addr, const uint16_t *data, uint8_t count)
+{
+    uint8_t i;
+
+    PMCON1bits.CFGS = 0;
+    PMCON1bits.FREE = 0;    /* Write, not erase */
+    PMCON1bits.WREN = 1;
+
+    PMADRH = (uint8_t)(start_addr >> 8);
+    PMADRL = (uint8_t)(start_addr & 0xFF);
+
+    for (i = 0; i < count; i++) {
+        PMDATH = (uint8_t)(data[i] >> 8);
+        PMDATL = (uint8_t)(data[i] & 0xFF);
+
+        /* LWLO=1 loads the write latch; LWLO=0 on last word commits all */
+        PMCON1bits.LWLO = (i < (count - 1)) ? 1 : 0;
+
+        INTCONbits.GIE = 0;
+        PMCON2 = 0x55;
+        PMCON2 = 0xAA;
+        PMCON1bits.WR = 1;
+        NOP();
+        NOP();
+
+        PMADRL++;
+    }
+
+    PMCON1bits.WREN = 0;
+}
+
+#endif /* FREQ_CACHE_ENABLED */

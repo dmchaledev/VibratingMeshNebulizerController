@@ -15,6 +15,16 @@ The Aerogen Solo is a medical-grade vibrating mesh nebulizer used in ICUs and ho
 
 This project provides everything you need to build a working controller on a breadboard using off-the-shelf parts from DigiKey, a $3 microcontroller, and free development tools from Microchip.
 
+### v2.0 — Simplified Design
+
+The latest version includes several improvements aimed at reducing cost, simplifying assembly, and supporting the reality of long daily nebulization schedules:
+
+- **Continuous treatment mode** — runs until you press stop or the cup is empty. No arbitrary 10-minute timer cutting off a 90-minute airway clearance session.
+- **Dry-cup auto-stop** — detects when the cup is empty and shuts down safely. No babysitting required during long treatments.
+- **Pre-built boost module option** — replace the hardest part of the circuit (discrete boost converter) with a $1-2 pre-built module. Cuts the parts list from ~40 to ~25 components and drops the cost to ~$20.
+- **Frequency caching** — saves the resonant frequency to flash memory. Next power-up tries the cached frequency first for near-instant startup.
+- **Smart re-sweep** — when resonance drifts during a long session, does a fast 150ms targeted re-sweep instead of a 2.4-second full sweep. Less interruption.
+
 ## How It Works
 
 The Aerogen Solo cup contains a PZT (Lead Zirconate Titanate) piezoelectric ring bonded to a perforated stainless steel mesh. When driven at its resonant frequency (~90-150 kHz) with ~30-60 Vpp, the mesh vibrates and pushes liquid through thousands of laser-drilled holes, creating a fine aerosol (MMAD ~3.4 um).
@@ -49,17 +59,19 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 ├── README.md                 ← You are here
 ├── DISCLAIMER.md             ← Safety and legal notice (READ THIS FIRST)
 ├── docs/
-│   ├── BUILD_GUIDE.md        ← Complete breadboard build guide
-│   └── BOM.csv               ← Bill of materials (DigiKey part numbers)
+│   ├── BUILD_GUIDE.md        ← Build guide, enclosure options, nursery durability
+│   ├── DIAGRAMS.md           ← Visual diagrams (state machine, signal flow, etc.)
+│   ├── BOM.csv               ← Bill of materials — full discrete build (~$38)
+│   └── BOM_SIMPLIFIED.csv    ← Bill of materials — boost module build (~$20)
 ├── firmware/
 │   ├── README.md             ← How to compile and flash
 │   └── src/
 │       ├── main.c            ← Main program and state machine
-│       ├── config.h          ← Tunable parameters (frequencies, voltages)
+│       ├── config.h          ← Tunable parameters (frequencies, voltages, modes)
 │       ├── peripherals.h     ← Peripheral function declarations
-│       ├── peripherals.c     ← PIC16F1713 hardware initialization
+│       ├── peripherals.c     ← PIC16F1713 hardware initialization + HEF flash
 │       ├── sweep.h           ← Frequency sweep declarations
-│       └── sweep.c           ← Resonant frequency sweep algorithm
+│       └── sweep.c           ← Full sweep, narrow sweep, and frequency caching
 └── hardware/
     └── WIRING.md             ← Pin-by-pin wiring reference
 ```
@@ -67,10 +79,12 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 ## Quick Start
 
 1. **Read [DISCLAIMER.md](DISCLAIMER.md)** — understand what you're building
-2. **Order parts** from [docs/BOM.csv](docs/BOM.csv) — ~$38 without programmer, ~$73 with
-3. **Wire the breadboard** following [hardware/WIRING.md](hardware/WIRING.md)
-4. **Compile and flash** firmware per [firmware/README.md](firmware/README.md)
-5. **First power-up** following the procedure in [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)
+2. **Choose your build** — see the comparison table in [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)
+3. **Order parts** from [docs/BOM.csv](docs/BOM.csv) (full, ~$38) or [docs/BOM_SIMPLIFIED.csv](docs/BOM_SIMPLIFIED.csv) (simplified, ~$20)
+4. **Wire the breadboard** following [hardware/WIRING.md](hardware/WIRING.md) and [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)
+5. **Set `BOOST_MODE`** in `firmware/src/config.h` to match your build (DISCRETE or MODULE)
+6. **Compile and flash** firmware per [firmware/README.md](firmware/README.md)
+7. **First power-up** following the procedure in [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)
 
 ## Key Reference Documents
 
@@ -84,13 +98,14 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 
 ## Estimated Cost
 
-| Category | Cost |
-|----------|------|
-| All electronic components | ~$38 |
-| Programmer (MPLAB Snap, one-time) | ~$35 |
-| **Total** | **~$73** |
+| Build | Parts | + Programmer | Total |
+|-------|-------|-------------|-------|
+| **Simplified** (boost module) | ~$20 | ~$35 | **~$55** |
+| **Full** (discrete boost) | ~$38 | ~$35 | **~$73** |
 
-Most parts ship next-day from DigiKey.
+The programmer (MPLAB Snap) is a one-time purchase. Most parts ship next-day from DigiKey. The boost module for the simplified build is widely available from Amazon/eBay for $1-2.
+
+**Compare to:** Aerogen Pro-X controller — **$2,700** out of pocket.
 
 ## License
 

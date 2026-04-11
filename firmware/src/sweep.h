@@ -41,4 +41,30 @@ sweep_result_t sweep_find_resonance(void);
  */
 uint16_t sweep_check_current(uint16_t nco_inc);
 
+/*
+ * Narrow sweep around a known frequency.
+ *
+ * Scans +/- NARROW_SWEEP_RANGE_HZ around center_inc with finer step size.
+ * Much faster than a full sweep (~150ms vs ~2.4 sec). Used when:
+ *   - Resonance has drifted during a long treatment (temperature, liquid level)
+ *   - Checking a cached frequency on startup
+ *
+ * Returns a sweep_result_t, same as sweep_find_resonance().
+ * Falls through to the caller if no resonance is found (caller can
+ * then try a full sweep as fallback).
+ */
+sweep_result_t sweep_narrow(uint16_t center_inc);
+
+/*
+ * Frequency caching — save/load the last successful resonant frequency
+ * to/from the PIC16F1713's High-Endurance Flash (HEF).
+ *
+ * sweep_save_cached_freq() writes the NCO increment to HEF.
+ * sweep_load_cached_freq() returns the cached increment, or 0 if invalid.
+ */
+#if FREQ_CACHE_ENABLED
+void     sweep_save_cached_freq(uint16_t nco_inc);
+uint16_t sweep_load_cached_freq(void);
+#endif
+
 #endif /* SWEEP_H */
