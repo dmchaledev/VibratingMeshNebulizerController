@@ -8,20 +8,25 @@ Complete guide to building an Aerogen Solo controller on a breadboard using the 
 
 ## Choose Your Build
 
-There are two ways to build this controller:
+There are three ways to build this controller:
 
-| | Full Build | Simplified Build |
-|---|---|---|
-| **Parts cost** | ~$38 | ~$20 |
-| **Component count** | ~40 parts | ~25 parts |
-| **Hardest part** | Discrete boost converter wiring | Adjusting boost module trim pot |
-| **Boost converter** | Discrete (L1, Q2, D1, feedback) | Pre-built module (MT3608/XL6009) |
-| **BOM file** | [BOM.csv](BOM.csv) | [BOM_SIMPLIFIED.csv](BOM_SIMPLIFIED.csv) |
-| **Firmware config** | `BOOST_MODE = BOOST_MODE_DISCRETE` | `BOOST_MODE = BOOST_MODE_MODULE` |
+| | Full Build | Simplified Build | Turnkey Build |
+|---|---|---|---|
+| **Parts cost** | ~$38 | ~$20 | ~$15-25/board |
+| **Component count (you handle)** | ~40 parts | ~25 parts | ~5 plug-in items |
+| **Soldering required** | Lots (or breadboard) | Moderate (or breadboard) | 2 joints (pogo pins only) |
+| **Build time** | 4-8 hours | 2-4 hours | ~30 minutes |
+| **Hardest part** | Discrete boost converter wiring | Adjusting boost module trim pot | Flashing firmware |
+| **Boost converter** | Discrete (L1, Q2, D1, feedback) | Pre-built module (MT3608/XL6009) | Pre-built module (MT3608/XL6009) |
+| **BOM file** | [BOM.csv](BOM.csv) | [BOM_SIMPLIFIED.csv](BOM_SIMPLIFIED.csv) | [BOM_TURNKEY.csv](BOM_TURNKEY.csv) |
+| **Firmware config** | `BOOST_MODE = BOOST_MODE_DISCRETE` | `BOOST_MODE = BOOST_MODE_MODULE` | `BOOST_MODE = BOOST_MODE_MODULE` |
+| **Cup connection** | Alligator clips / pogo pins | Alligator clips / pogo pins | 3D-printed adapter with pogo pins |
 
-**Recommendation:** If this is your first build, start with the **Simplified Build**. The discrete boost converter is the most complex and error-prone part of the circuit. The pre-built module costs $1-2 and eliminates 8+ components and the hardest wiring. You can always build the discrete version later.
+**Recommendation:** For daily use (especially in a nursery), go with the **Turnkey Build**. JLCPCB assembles the PCB for you — factory-soldered connections don't loosen. Combined with the 3D-printed cup adapter and enclosure, it's the most reliable and lowest-effort option. See [JLCPCB_ORDERING_GUIDE.md](JLCPCB_ORDERING_GUIDE.md) for the full ordering walkthrough.
 
-The **Simplified Build** section is at the end of this guide. The main guide below covers the full discrete build.
+For learning electronics or rapid prototyping, the **Simplified Build** is a great starting point. The **Full Build** is for educational purposes — understanding every component in the original AN2265 reference design.
+
+The **Simplified Build** section is at the end of this guide. For the Turnkey Build, see the [JLCPCB Ordering Guide](JLCPCB_ORDERING_GUIDE.md). The main guide below covers the full discrete build.
 
 ---
 
@@ -507,3 +512,44 @@ This tells the firmware to skip the DAC voltage ramp and CWG initialization, sin
 | **Board space** | Larger | Smaller (module is compact) |
 
 The soft-start ramp in the full build gently increases the boost voltage to avoid inrush current. With the module build, the boost output comes up to ~12V immediately when powered. This is fine for most use cases — the output LC circuit provides some inherent current limiting, and the PZT isn't driven until the sweep starts.
+
+---
+
+## Nebulizer Cup Adapter
+
+All build tiers need a way to connect to the nebulizer cup. The `hardware/adapters/` directory contains parametric OpenSCAD designs for 3D-printable adapters that provide reliable, repeatable pogo-pin contact to the PZT leads.
+
+- **[Adapter System README](../hardware/adapters/README.md)** — Measurement guide, assembly instructions, hardware list
+- **[Aerogen Solo Adapter](../hardware/adapters/aerogen_solo_adapter.scad)** — Parametric adapter for the Aerogen Solo cup
+- **[Universal Adapter](../hardware/adapters/universal_adapter.scad)** — Configurable adapter for OMRON, PARI, Philips, and other cups
+
+The adapter uses P75-B1 spring-loaded pogo pins (~$3 for a 50-pack) mounted in a 3D-printed cradle. A JST-XH connector provides clean plug/unplug to the controller. This is a major upgrade over alligator clips or taped wires for daily use.
+
+---
+
+## Controller Enclosure
+
+For the Turnkey and perfboard builds, a 3D-printable enclosure is available:
+
+- **[Enclosure Design](../hardware/enclosure/controller_enclosure.scad)** — Parametric OpenSCAD enclosure with integrated adapter dock
+
+Features:
+- PCB mounting standoffs with M2.5 screw holes
+- USB-C power port cutout
+- JST output port for cup adapter
+- ICSP programming port (accessible without opening)
+- Button and LED windows on the lid
+- Dovetail dock for the cup adapter (slide-on, slide-off)
+- Ventilation slots
+
+Print in PETG for best chemical resistance against saline/medication mist.
+
+---
+
+## Turnkey Build (JLCPCB Pre-Assembled)
+
+For the fastest, most reliable build path, see the **[JLCPCB Ordering Guide](JLCPCB_ORDERING_GUIDE.md)**. It walks through ordering a fully assembled PCB — JLCPCB solders all SMD components. You receive a completed board, plug in the boost module and cup adapter, flash firmware, and you're done.
+
+**BOM:** [BOM_TURNKEY.csv](BOM_TURNKEY.csv)
+
+This is the recommended path for daily nursery use. Factory-soldered connections are far more reliable than breadboard press-fit or hand-soldered joints, and the per-unit cost (~$15-25) is actually lower than the DIY builds when you factor in time and reliability.
