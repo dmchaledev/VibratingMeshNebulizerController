@@ -233,6 +233,185 @@ This confirms the cup works and gives you the target frequency.
 
 ---
 
+## Wire Color Guide
+
+Use consistent wire colors to make the circuit easier to debug and maintain. This is especially important when the circuit will be handled daily in a nursery environment.
+
+| Color | Signal | Notes |
+|-------|--------|-------|
+| **Red** | VDD (+4.5-5V) | Power supply positive rail |
+| **Black** | GND | Ground rail |
+| **Orange** | VBOOST (10-20V) | High-voltage DC rail — treat with respect |
+| **Yellow** | NCO output (RC3 → Q4 gate) | High-frequency signal, keep short |
+| **Green** | ADC sense lines (AN0-AN3) | Keep away from switching nodes |
+| **Blue** | CWG output (RA4 → Q2 gate) | Boost MOSFET drive (discrete build only) |
+| **White** | Output to Solo cup | The two leads to the nebulizer |
+| **Purple/Gray** | UART TX/RX | Debug serial (optional) |
+
+**Wire length matters.** Keep all wires in the output stage and boost stage as short as possible. Long wires at 100+ kHz act as antennas and create noise that can confuse the ADC readings. The wire from RC3 to Q4's gate should be under 3 cm.
+
+---
+
+## Common Mistakes
+
+Things that have caused people trouble, roughly in order of frequency:
+
+### 1. Wrong PIC package
+The PIC16F1713 comes in SOIC-28 (-I/SO) and DIP-28 (-I/SP). You **must** order the **-I/SP** (DIP) variant for breadboard use. The SOIC version won't fit.
+
+### 2. VBOOST too high on first power-up
+Starting with `BOOST_TARGET_DAC = 16` (~12V) is fine, but if you've modified it higher, you can damage the PZT. **Always start low and work up.** If the Solo cup gets warm to the touch, you're overdriving it.
+
+### 3. Missing bypass capacitors
+The 0.1 uF cap between VDD (pin 20) and VSS (pin 8/19) is not optional. Without it, the MCU's ADC readings will be noisy and the NCO output may glitch. Place it as physically close to the chip pins as possible.
+
+### 4. Reversed Schottky diode (D1)
+The 1N5819 band marks the cathode. Cathode goes toward VBOOST. If it's backwards, the boost converter won't produce voltage and current will flow uncontrolled.
+
+### 5. Wrong capacitor for C7
+C7 (4.7 nF, 200V) is the LC resonant capacitor. This value is critical. A 4.7 uF cap (1000x too large) looks similar in parts bins. Verify the marking: **472** = 4.7 nF, **475** = 4.7 uF. Also, C7 must be rated for at least 200V.
+
+### 6. Long leads on output stage
+The L2-L3-C7-Q4 output network operates at 100+ kHz. Long breadboard jumper wires add parasitic inductance that shifts the resonant frequency. Keep leads short and the output stage compact.
+
+### 7. Grounding issues
+The boost stage switches large currents at high frequency. If the ground return for the boost MOSFET (Q2) shares a path with the ADC sense ground, you'll get noisy readings and the sweep may fail to find resonance. Run separate ground wires for the power stages and the analog sense lines back to the ground rail.
+
+### 8. Breadboard contact degradation
+After many insertions, breadboard contacts loosen. If the circuit worked yesterday and doesn't today, try reseating components and jumper wires. This is the #1 reason to graduate to a soldered build (see below).
+
+---
+
+## Test Points and Debugging
+
+If things aren't working, check these signals with a multimeter or oscilloscope:
+
+| Test Point | Expected Value | What It Means If Wrong |
+|-----------|---------------|----------------------|
+| VDD (pin 20) | 4.5-5.0V DC | Power supply issue |
+| VBOOST rail | 10-20V DC (per DAC setting) | Boost converter not working |
+| RC3 (pin 14, NCO) | Square wave 90-150 kHz during sweep | NCO not configured or pin not connected |
+| RA4 (pin 6, CWG) | Square wave matching NCO | CWG not configured (discrete build) |
+| AN1 (pin 3) after 4.7K | 0.1-0.9V during resonance | Current sense circuit issue |
+| Red LED (RC0) | Solid red in IDLE | MCU not running |
+| Green LED (RC1) | Solid green in RUNNING | Sweep failed to find resonance |
+
+**UART debug output** is the most useful diagnostic. Connect a MCP2221 USB-UART bridge and open a terminal at 9600 baud. The firmware prints state transitions, sweep results, and resonance values. You'll see exactly where it's failing.
+
+---
+
+## Enclosure and Physical Protection
+
+A bare breadboard will not survive daily use in a nursery. Here are practical enclosure options, from simplest to most robust.
+
+### Option 1: Breadboard Case (Simplest)
+
+Several companies make snap-on cases designed for standard 830-point breadboards:
+
+- **Breadboard + mounting plate combo** — many breadboards come with a metal or plastic baseplate with screw holes. Mount this inside any project box.
+- **Hammond 1591XXDSBK** (150 x 80 x 50 mm) — a general-purpose ABS project box. The breadboard (165 x 55 mm) fits diagonally, or trim the breadboard rails to fit. Drill holes for the button, LEDs, power input, and cup output wires.
+- **Clear food storage container** — seriously. A small Rubbermaid or similar ~200 x 100 x 60 mm container with a snap lid works. Drill holes for wires, button, and LED visibility. The clear lid lets you see the LED status without opening it. Cost: ~$3.
+
+For any enclosure:
+1. **Drill holes** for: power input wires, Solo cup output wires, button access, LED visibility, and optional USB debug cable
+2. **Mount the breadboard** with double-sided foam tape (3M VHB is excellent)
+3. **Use cable glands** (PG7 or M12, ~$0.50 each) where wires exit the box to prevent strain on breadboard connections
+4. **Label everything** — masking tape labels on the outside: POWER, OUTPUT, START/STOP
+
+### Option 2: Perfboard Build (Recommended for Daily Use)
+
+Once the breadboard prototype works reliably, solder the circuit onto a perfboard (also called protoboard or stripboard) for a permanent build:
+
+- **What:** Same circuit, same components, but soldered instead of press-fit
+- **Cost:** A perfboard is ~$2-3. No new components needed.
+- **Why:** Soldered connections don't loosen. Perfboard can be cut to fit an enclosure exactly. This is the single best upgrade for reliability in daily use.
+- **How:** Transfer components one section at a time (MCU first, then output stage, etc.), verifying each stage works before moving on. Use an IC socket for the PIC so you can remove it for reprogramming.
+
+A perfboard build in a project box is robust enough for years of daily nursery use.
+
+### Option 3: Custom PCB (Best Quality)
+
+For the best possible build quality, order a custom PCB:
+
+- **JLCPCB, PCBWay, or OSH Park** can manufacture 5 PCBs for ~$5-15 (shipped)
+- You'd need to create a PCB layout (KiCad is free). The schematic is fully documented in this repository and the AN2265 reference design includes layout files.
+- Surface-mount components can be used (smaller, cleaner) since they're soldered
+- A custom PCB eliminates all wiring errors — just solder components to the marked pads
+
+This is the path to making these for other families. If there's interest, a community-designed PCB could be shared openly.
+
+---
+
+## Nursery Environment: Making It Last
+
+This device will live in a nursery with a child who needs 6+ nebulizer treatments per day. That's 2,000+ power cycles per year, with exposure to saline mist, medication, and the general chaos of a nursery. Here's how to make it survive.
+
+### Moisture Protection
+
+Saline and medication mist will drift. Over time, salt deposits corrode exposed copper.
+
+- **Conformal coating spray** (MG Chemicals 422B or similar, ~$12/can) — spray a thin coat over the soldered perfboard (NOT the breadboard — it'll glue the contacts). This seals the copper traces against moisture and salt. Mask the button, LEDs, and any connectors before spraying.
+- **Keep the controller away from the mist output.** The cup generates a fine aerosol that drifts. Position the controller at least 30 cm (12") from the cup, or better, below it where mist doesn't settle.
+- **Wipe down weekly** with a dry cloth. If salt deposits accumulate on the enclosure, dampen the cloth slightly. Never let liquid into the enclosure.
+
+### Strain Relief
+
+The wires to the Solo cup will be connected and disconnected with every cup change (at least every 28 days). Without strain relief, this repeated flexing will break wires at the solder joint.
+
+- **Cable glands** at the enclosure exit points (PG7 size fits most wire pairs)
+- **Hot glue** a small blob where wires connect to the perfboard/breadboard
+- **Leave a service loop** — 10-15 cm of slack inside the enclosure so tugging the external wire doesn't stress the internal connection
+- **Use stranded wire** (not solid core) for anything that will be flexed. Solid core is fine on the board; stranded for any external runs
+
+### Cup Connection
+
+The Solo cup contacts need reliable, repeatable electrical connection:
+
+- **Spring-loaded pogo pins** (P75-B1 or similar, 1mm tip) — the best option for repeated connect/disconnect. Mount two in a small holder at the correct spacing for the Solo cup contacts. These last thousands of cycles.
+- **JST-XH connectors** — solder a JST plug to the pogo pin leads, and a JST socket to the controller output. This gives you a clean disconnect point that doesn't stress the board.
+- **Avoid alligator clips for daily use** — they work for bench testing but they slip, scratch the contacts, and wear out.
+
+### Physical Durability
+
+- **Velcro strips** on the bottom of the enclosure and on the nursery surface (crib rail, IV pole, shelf) to prevent it from being knocked off
+- **Foam padding** inside the enclosure around the board to dampen vibration
+- **Short external cable** — keep the cable from controller to cup under 50 cm. Longer cables pick up more noise and are easier to snag
+- **No exposed metal** — make sure all wire ends are insulated or inside the enclosure
+
+### Spares to Keep on Hand
+
+| Item | Why | Cost |
+|------|-----|------|
+| Aerogen Solo cups (2-3 extra) | 28-day life, you never want to run out | ~$40 each |
+| Pre-programmed spare PIC16F1713 | In case the MCU dies (rare) | ~$3 |
+| Spare boost module (if simplified build) | They're cheap, keep one ready | ~$2 |
+| Spare fuse | If the fuse blows, you need to be up and running fast | ~$0.50 |
+| Jumper wires / hookup wire | For repairs | ~$5 kit |
+
+### When to Rebuild
+
+Signs the controller needs attention:
+
+- **Intermittent mist** (starts and stops) — loose connection, reseat or re-solder
+- **Takes multiple button presses to start** — button or debounce issue, replace button
+- **Red LED blinks on startup but no sweep** — MCU issue, reprogram or replace
+- **Weaker mist than usual** — check VBOOST with multimeter. If low, check boost module or feedback divider.
+- **No mist, green LED never lights** — sweep isn't finding resonance. Connect UART debug to see what the sweep is reporting.
+
+---
+
+## Visual Guides
+
+See **[DIAGRAMS.md](DIAGRAMS.md)** for mermaid diagrams of:
+- Controller state machine
+- Circuit block diagram and signal flow
+- Frequency sweep algorithm (with caching fast path)
+- Treatment session flow with dry-cup and re-sweep logic
+- Resonance detection concept
+- Power path comparison (discrete vs. module build)
+
+---
+
 ## Simplified Build (Pre-Built Boost Module)
 
 This section describes an easier, cheaper build that replaces the discrete boost converter with a pre-built adjustable boost module. **This eliminates the most complex part of the circuit.**

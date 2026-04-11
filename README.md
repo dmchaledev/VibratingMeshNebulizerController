@@ -59,7 +59,8 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 ├── README.md                 ← You are here
 ├── DISCLAIMER.md             ← Safety and legal notice (READ THIS FIRST)
 ├── docs/
-│   ├── BUILD_GUIDE.md        ← Complete breadboard build guide (full + simplified)
+│   ├── BUILD_GUIDE.md        ← Build guide, enclosure options, nursery durability
+│   ├── DIAGRAMS.md           ← Visual diagrams (state machine, signal flow, etc.)
 │   ├── BOM.csv               ← Bill of materials — full discrete build (~$38)
 │   └── BOM_SIMPLIFIED.csv    ← Bill of materials — boost module build (~$20)
 ├── firmware/
