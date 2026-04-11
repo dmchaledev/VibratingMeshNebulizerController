@@ -6,6 +6,25 @@ Complete guide to building an Aerogen Solo controller on a breadboard using the 
 
 ---
 
+## Choose Your Build
+
+There are two ways to build this controller:
+
+| | Full Build | Simplified Build |
+|---|---|---|
+| **Parts cost** | ~$38 | ~$20 |
+| **Component count** | ~40 parts | ~25 parts |
+| **Hardest part** | Discrete boost converter wiring | Adjusting boost module trim pot |
+| **Boost converter** | Discrete (L1, Q2, D1, feedback) | Pre-built module (MT3608/XL6009) |
+| **BOM file** | [BOM.csv](BOM.csv) | [BOM_SIMPLIFIED.csv](BOM_SIMPLIFIED.csv) |
+| **Firmware config** | `BOOST_MODE = BOOST_MODE_DISCRETE` | `BOOST_MODE = BOOST_MODE_MODULE` |
+
+**Recommendation:** If this is your first build, start with the **Simplified Build**. The discrete boost converter is the most complex and error-prone part of the circuit. The pre-built module costs $1-2 and eliminates 8+ components and the hardest wiring. You can always build the discrete version later.
+
+The **Simplified Build** section is at the end of this guide. The main guide below covers the full discrete build.
+
+---
+
 ## What You're Building
 
 A controller that drives the piezoelectric ring inside an Aerogen Solo nebulizer cup. The circuit has three main stages:
@@ -170,8 +189,12 @@ All tunable parameters are in `firmware/src/config.h`:
 | `SWEEP_FREQ_MAX_HZ` | 150000 | Upper bound of frequency sweep (Hz) |
 | `SWEEP_STEP_HZ` | 500 | Frequency step size during sweep (Hz) |
 | `BOOST_TARGET_DAC` | 16 | DAC value controlling boost voltage (0-31). **Start low.** |
-| `TREATMENT_TIME_SEC` | 600 | Treatment duration in seconds (default 10 min) |
+| `BOOST_MODE` | `BOOST_MODE_DISCRETE` | `DISCRETE` for on-board boost, `MODULE` for pre-built module |
+| `TREATMENT_MODE` | `TREATMENT_MODE_CONTINUOUS` | `CONTINUOUS` runs until button/dry-cup, `TIMED` auto-stops |
+| `TREATMENT_TIME_SEC` | 1800 | Treatment duration in TIMED mode (default 30 min) |
 | `RESONANCE_THRESHOLD` | 100 | Minimum ADC reading to consider as resonance |
+| `DRY_CUP_THRESHOLD` | 30 | ADC reading below which cup is considered empty |
+| `FREQ_CACHE_ENABLED` | 1 | Save last frequency to flash for faster next startup |
 
 ---
 
@@ -207,3 +230,101 @@ This confirms the cup works and gives you the target frequency.
 - **Monitor temperature** — if the Solo cup gets warm, you're overdriving it
 - **The Solo cup has a 28-day intermittent life** — this doesn't change with a DIY controller
 - **Keep away from ventilator circuit** during testing — only integrate once reliable
+
+---
+
+## Simplified Build (Pre-Built Boost Module)
+
+This section describes an easier, cheaper build that replaces the discrete boost converter with a pre-built adjustable boost module. **This eliminates the most complex part of the circuit.**
+
+### What Changes
+
+The discrete boost converter (Stage 2 in the full build above) is replaced entirely:
+
+| Eliminated Components | Replaced By |
+|---|---|
+| L1 (22 uH inductor) | One pre-built boost module |
+| Q2 (RJP020N06 MOSFET + breakout) | (MT3608, XL6009, or similar) |
+| D1 (1N5819 Schottky) | |
+| R9 (0.33 ohm current sense) | Module cost: ~$1-2 |
+| R5 (221K feedback divider) | |
+| R8 (15K feedback divider) | |
+| C2 (10 uF filter cap) | |
+| C9 (2.2 uF filter cap) | |
+
+You also replace the P-MOSFET reverse polarity protection (Q1, Q3) with a single series diode (simpler).
+
+**Parts list:** See [BOM_SIMPLIFIED.csv](BOM_SIMPLIFIED.csv)
+
+### Choosing a Boost Module
+
+Any adjustable DC-DC boost converter module that accepts 4.5-5V input and outputs 10-20V will work:
+
+- **MT3608** module — smallest, cheapest (~$0.50-1), widely available
+- **XL6009** module — higher current capability, slightly larger
+- **SDB628** module — similar to MT3608
+
+These are all available from Amazon, eBay, AliExpress, etc. They come with a small trim potentiometer to set the output voltage.
+
+### Setting the Boost Module Output Voltage
+
+**Before connecting to the circuit:**
+
+1. Connect the boost module's input to your 4.5-5V power supply
+2. Connect a multimeter to the module's output
+3. Turn the trim pot (small Phillips screwdriver) until the output reads **~12V**
+4. Disconnect power
+
+This replaces the DAC-controlled voltage ramp in the discrete design. The module maintains a steady output voltage on its own.
+
+### Simplified Wiring
+
+Follow Stage 1 (Power and MCU) from the full build guide above — it's identical.
+
+**Skip Stage 2 entirely.** Instead:
+
+1. Connect the boost module's **VIN+** to your 4.5-5V power rail (through the fuse)
+2. Connect the boost module's **VIN-** to ground
+3. Connect a **1N5819 diode** in series with VIN+ for reverse polarity protection (anode toward power supply, cathode toward module input)
+4. Connect the boost module's **VOUT+** to the VBOOST rail on your breadboard
+5. Connect the boost module's **VOUT-** to ground
+
+Then continue with **Stage 3 (Output Stage)** and **Stage 4 (Feedback Sensing)** exactly as described above.
+
+**Important:** Since the boost module is not controlled by the MCU, you do not need to wire:
+- CWG1A output (pin 6, RA4) — leave unconnected
+- AN0 (pin 2, RA0) boost current sense — leave unconnected
+- AN3 (pin 5, RA3) boost voltage feedback — leave unconnected
+
+### Firmware Configuration
+
+Before compiling, change one line in `firmware/src/config.h`:
+
+```c
+#define BOOST_MODE              BOOST_MODE_MODULE
+```
+
+This tells the firmware to skip the DAC voltage ramp and CWG initialization, since the boost module handles it independently.
+
+### Simplified Build Cost Estimate
+
+| Category | Cost |
+|----------|------|
+| PIC16F1713 + passives + output stage | ~$18 |
+| Boost module (MT3608) | ~$2 |
+| **Parts total** | **~$20** |
+| Programmer (MPLAB Snap, one-time) | ~$35 |
+| **Total with programmer** | **~$55** |
+
+### Tradeoffs vs. Full Build
+
+| | Full Build | Simplified Build |
+|---|---|---|
+| **Soft-start voltage ramp** | Yes (DAC-controlled) | No (module output is instant) |
+| **Software voltage control** | Yes (can adjust VBOOST via firmware) | No (set once with trim pot) |
+| **Component count** | ~40 | ~25 |
+| **Wiring complexity** | Higher (boost circuit is fiddly) | Lower (module is self-contained) |
+| **Cost** | ~$38 parts | ~$20 parts |
+| **Board space** | Larger | Smaller (module is compact) |
+
+The soft-start ramp in the full build gently increases the boost voltage to avoid inrush current. With the module build, the boost output comes up to ~12V immediately when powered. This is fine for most use cases — the output LC circuit provides some inherent current limiting, and the PZT isn't driven until the sweep starts.

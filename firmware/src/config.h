@@ -78,6 +78,18 @@
 #define BOOST_RAMP_DELAY_MS 50          /* Delay between DAC increments during ramp */
 #define BOOST_MAX_DAC       24          /* Safety limit — never exceed this */
 
+/* Boost hardware mode:
+ *   DISCRETE — use the on-board boost converter (L1, Q2, D1, etc.).
+ *              Full DAC-controlled feedback loop. Original AN2265 design.
+ *   MODULE   — use a pre-built adjustable boost module (MT3608, XL6009, etc.).
+ *              Set the module's output voltage to ~12V with its trim pot.
+ *              Eliminates L1, Q2, D1, R9, R5, R8, C2, C9, and all boost
+ *              firmware (DAC ramp, CWG drive). Much simpler to build.
+ *              See docs/BUILD_GUIDE.md "Simplified Build" section. */
+#define BOOST_MODE_DISCRETE     0
+#define BOOST_MODE_MODULE       1
+#define BOOST_MODE              BOOST_MODE_DISCRETE /* Change to MODULE for simplified build */
+
 /* =========================================================================
  * RESONANCE DETECTION
  *
@@ -95,13 +107,48 @@
 #define RESONANCE_MARGIN    50          /* ADC counts below peak to trigger re-sweep */
 #define RECHECK_INTERVAL_MS 5000        /* How often to verify resonance during run */
 
+/* Narrow re-sweep: when resonance drifts during operation, try a fast
+ * narrow sweep around the last known frequency before falling back to
+ * a full sweep. ~150ms vs ~2.4 sec for a full sweep. */
+#define NARROW_SWEEP_RANGE_HZ   3000UL  /* Scan +/- this many Hz around last known */
+#define NARROW_SWEEP_STEP_HZ    200UL   /* Finer step size for narrow sweep */
+
+/* Frequency caching: save the last successful resonant frequency to the
+ * PIC16F1713's High-Endurance Flash (HEF). On next power-up, the controller
+ * tries the cached frequency first — near-instant startup if the same cup
+ * is still attached.
+ *
+ * Disable (set to 0) if you frequently swap between different cup types. */
+#define FREQ_CACHE_ENABLED      1
+
 /* =========================================================================
  * TREATMENT TIMER
  *
  * Default treatment duration. The controller stops automatically after this.
  * Press the button again to stop early.
  * ========================================================================= */
-#define TREATMENT_TIME_SEC  600         /* 10 minutes default */
+#define TREATMENT_TIME_SEC  1800        /* 30 minutes default (was 10 min) */
+
+/* Treatment mode:
+ *   TIMED      — auto-stop after TREATMENT_TIME_SEC (original behavior).
+ *   CONTINUOUS — run until button press or dry-cup detection.
+ *
+ * Use CONTINUOUS for heavy nebulization schedules (100+ mL/day).
+ * The controller still monitors for dry cup and will auto-stop
+ * if no medication remains, so it's safe to leave running. */
+#define TREATMENT_MODE_TIMED        0
+#define TREATMENT_MODE_CONTINUOUS   1
+#define TREATMENT_MODE              TREATMENT_MODE_CONTINUOUS
+
+/* Dry-cup auto-stop: during nebulization, if the output current stays
+ * below DRY_CUP_THRESHOLD for DRY_CUP_CONFIRM_MS continuously, the
+ * controller assumes the cup is empty and stops automatically.
+ *
+ * This prevents running dry, which overheats the mesh and wastes the cup's
+ * 28-day lifespan. Set DRY_CUP_THRESHOLD above your ADC noise floor but
+ * well below the normal operating current. */
+#define DRY_CUP_THRESHOLD      30      /* ADC counts — below this = likely empty */
+#define DRY_CUP_CONFIRM_MS     3000    /* Must stay low this long to confirm (ms) */
 
 /* =========================================================================
  * PIN ASSIGNMENTS — PIC16F1713 DIP-28

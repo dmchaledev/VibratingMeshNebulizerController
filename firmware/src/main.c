@@ -6,9 +6,16 @@
  *
  * State machine:
  *   IDLE     — waiting for button press, LEDs indicate ready
- *   SWEEP    — scanning 90-150 kHz for PZT resonant frequency
- *   RUNNING  — driving PZT at resonance, treatment timer active
+ *   SWEEP    — scanning for PZT resonant frequency
+ *   RUNNING  — driving PZT at resonance, treatment active
  *   ERROR    — no resonance found or fault detected
+ *
+ * Key features:
+ *   - Continuous treatment mode for long nebulization sessions (100+ mL/day)
+ *   - Dry-cup auto-stop: detects empty cup and shuts down safely
+ *   - Narrow re-sweep: fast resonance re-acquisition when frequency drifts
+ *   - Frequency caching: saves last resonance to flash for fast startup
+ *   - Boost module support: simplified build with pre-built boost converter
  *
  * Based on Microchip AN2265 reference design.
  * Target: PIC16F1713-I/SP (DIP-28) on breadboard.
@@ -29,7 +36,9 @@
  * ======================================================================== */
 typedef enum {
     STATE_IDLE,
+#if BOOST_MODE == BOOST_MODE_DISCRETE
     STATE_BOOST_RAMP,
+#endif
     STATE_SWEEP,
     STATE_RUNNING,
     STATE_STOPPING,
@@ -42,12 +51,18 @@ static uint16_t         treatment_ticks;     /* Timer1 overflow counter */
 static uint16_t         treatment_max_ticks; /* Ticks for full treatment duration */
 static uint16_t         recheck_ticks;       /* Ticks since last resonance recheck */
 static uint16_t         recheck_max_ticks;   /* Ticks per recheck interval */
+static uint16_t         dry_cup_ticks;       /* Ticks of sustained low current */
+static uint16_t         dry_cup_max_ticks;   /* Ticks for dry-cup confirmation */
+#if BOOST_MODE == BOOST_MODE_DISCRETE
 static uint8_t          current_dac;         /* Current boost DAC level */
+#endif
+#if FREQ_CACHE_ENABLED
+static uint16_t         cached_freq;         /* Loaded from HEF on startup */
+#endif
 
 /*
  * Timer1 overflow period: ~131 ms (65536 * 8 / 4 MHz)
  * Ticks per second: ~7.63
- * Treatment ticks: TREATMENT_TIME_SEC * 1000 / 131
  */
 #define TICKS_PER_SEC       8   /* approximate: 1000/131 ≈ 7.63, round up */
 #define MS_TO_TICKS(ms)     ((uint16_t)((ms) / 131 + 1))
@@ -80,12 +95,13 @@ static uint8_t button_debounced(void)
 }
 
 /* ========================================================================
- * Boost voltage ramp
+ * Boost voltage ramp (discrete boost only)
  *
  * Gradually increases the DAC from BOOST_STARTUP_DAC to BOOST_TARGET_DAC.
  * This prevents inrush current and gives the boost converter time to
  * stabilize at each voltage step.
  * ======================================================================== */
+#if BOOST_MODE == BOOST_MODE_DISCRETE
 static uint8_t boost_ramp_step(void)
 {
     if (current_dac < BOOST_TARGET_DAC) {
@@ -95,6 +111,7 @@ static uint8_t boost_ramp_step(void)
     }
     return 1;       /* Ramp complete */
 }
+#endif
 
 /* ========================================================================
  * LED patterns for each state
@@ -107,10 +124,12 @@ static void update_leds(void)
             led_green_off();
             break;
 
+#if BOOST_MODE == BOOST_MODE_DISCRETE
         case STATE_BOOST_RAMP:
             led_red_on();
             led_green_off();    /* Red = ramping boost voltage */
             break;
+#endif
 
         case STATE_SWEEP:
             led_red_off();      /* Green blinks during sweep (toggled in sweep.c) */
@@ -140,7 +159,9 @@ static void stop_nebulization(void)
 {
     nco_disable();
     dac_set_value(0);
+#if BOOST_MODE == BOOST_MODE_DISCRETE
     current_dac = 0;
+#endif
     timer1_stop();
 
     led_red_off();
@@ -149,6 +170,34 @@ static void stop_nebulization(void)
     uart_send_string("STOP: nebulization ended\r\n");
 
     state = STATE_IDLE;
+}
+
+/* ========================================================================
+ * Start sweep — attempt to find resonance
+ *
+ * Tries the most efficient approach first:
+ *   1. If we have a cached frequency, try a narrow sweep around it
+ *   2. If that fails, do a full sweep
+ * ======================================================================== */
+static void start_sweep(void)
+{
+#if FREQ_CACHE_ENABLED
+    /* Try cached frequency with a narrow sweep first */
+    if (cached_freq != 0) {
+        uart_send_string("STARTUP: trying cached frequency\r\n");
+        resonance = sweep_narrow(cached_freq);
+
+        if (resonance.found) {
+            uart_send_string("STARTUP: cached freq still good\r\n");
+            return;
+        }
+        /* Narrow sweep failed — fall through to full sweep */
+        uart_send_string("STARTUP: cached freq stale, full sweep\r\n");
+    }
+#endif
+
+    /* Full sweep */
+    resonance = sweep_find_resonance();
 }
 
 /* ========================================================================
@@ -164,10 +213,18 @@ void main(void)
     /* Calculate timer tick counts */
     treatment_max_ticks = (uint16_t)((uint32_t)TREATMENT_TIME_SEC * TICKS_PER_SEC);
     recheck_max_ticks   = MS_TO_TICKS(RECHECK_INTERVAL_MS);
+    dry_cup_max_ticks   = MS_TO_TICKS(DRY_CUP_CONFIRM_MS);
+
+    /* Load cached resonant frequency from flash */
+#if FREQ_CACHE_ENABLED
+    cached_freq = sweep_load_cached_freq();
+#endif
 
     /* Start in idle state */
     state = STATE_IDLE;
+#if BOOST_MODE == BOOST_MODE_DISCRETE
     current_dac = 0;
+#endif
 
     /* Startup indication: blink red LED once */
     led_red_on();
@@ -175,7 +232,19 @@ void main(void)
     led_red_off();
     delay_ms(250);
 
-    uart_send_string("\r\n=== VMN Controller v1.0 ===\r\n");
+    uart_send_string("\r\n=== VMN Controller v2.0 ===\r\n");
+#if TREATMENT_MODE == TREATMENT_MODE_CONTINUOUS
+    uart_send_string("Mode: CONTINUOUS (dry-cup auto-stop)\r\n");
+#else
+    uart_send_string("Mode: TIMED (");
+    uart_send_uint16(TREATMENT_TIME_SEC);
+    uart_send_string(" sec)\r\n");
+#endif
+#if BOOST_MODE == BOOST_MODE_MODULE
+    uart_send_string("Boost: external module\r\n");
+#else
+    uart_send_string("Boost: discrete (DAC-controlled)\r\n");
+#endif
     uart_send_string("Ready. Press button to start.\r\n");
 
     /* ---- Main loop ---- */
@@ -183,17 +252,27 @@ void main(void)
 
         /* Check for button press in any state */
         if (button_debounced()) {
-            if (state == STATE_RUNNING || state == STATE_SWEEP || state == STATE_BOOST_RAMP) {
+            if (state == STATE_RUNNING || state == STATE_SWEEP
+#if BOOST_MODE == BOOST_MODE_DISCRETE
+                || state == STATE_BOOST_RAMP
+#endif
+            ) {
                 /* Button during operation = stop */
                 stop_nebulization();
                 delay_ms(500);  /* Debounce delay after stop */
                 continue;
             } else if (state == STATE_IDLE || state == STATE_ERROR) {
                 /* Button in idle/error = start */
+#if BOOST_MODE == BOOST_MODE_DISCRETE
                 uart_send_string("START: beginning boost ramp\r\n");
                 current_dac = BOOST_STARTUP_DAC;
                 dac_set_value(current_dac);
                 state = STATE_BOOST_RAMP;
+#else
+                /* No ramp needed — boost module is already at target voltage */
+                uart_send_string("START: beginning sweep\r\n");
+                state = STATE_SWEEP;
+#endif
             }
         }
 
@@ -204,6 +283,7 @@ void main(void)
             /* Just wait for button press */
             break;
 
+#if BOOST_MODE == BOOST_MODE_DISCRETE
         case STATE_BOOST_RAMP:
             /* Gradually increase boost voltage to target */
             if (boost_ramp_step()) {
@@ -214,21 +294,33 @@ void main(void)
                 delay_ms(BOOST_RAMP_DELAY_MS);
             }
             break;
+#endif
 
         case STATE_SWEEP:
-            /* Scan for PZT resonant frequency */
-            resonance = sweep_find_resonance();
+            /* Scan for PZT resonant frequency (tries cache first if available) */
+            start_sweep();
 
             if (resonance.found) {
                 /* Resonance found — start nebulizing */
                 uart_send_string("RUN: nebulizing\r\n");
 
+#if BOOST_MODE == BOOST_MODE_DISCRETE
                 /* Enable the CWG to drive the boost MOSFET */
                 CWG1CON0bits.G1EN = 1;
+#endif
+
+                /* Save this frequency for next startup */
+#if FREQ_CACHE_ENABLED
+                if (resonance.peak_inc != cached_freq) {
+                    sweep_save_cached_freq(resonance.peak_inc);
+                    cached_freq = resonance.peak_inc;
+                }
+#endif
 
                 /* Start treatment timer */
                 treatment_ticks = 0;
                 recheck_ticks   = 0;
+                dry_cup_ticks   = 0;
                 timer1_start();
 
                 state = STATE_RUNNING;
@@ -236,37 +328,68 @@ void main(void)
                 /* No resonance — error state */
                 uart_send_string("ERROR: no cup detected\r\n");
                 dac_set_value(0);
+#if BOOST_MODE == BOOST_MODE_DISCRETE
                 current_dac = 0;
+#endif
                 state = STATE_ERROR;
                 error_blink_count = 0;
             }
             break;
 
         case STATE_RUNNING:
-            /* Count Timer1 overflows for treatment duration */
+            /* Count Timer1 overflows for treatment/recheck timing */
             if (timer1_overflow()) {
                 timer1_clear_overflow();
                 treatment_ticks++;
                 recheck_ticks++;
 
+#if TREATMENT_MODE == TREATMENT_MODE_TIMED
                 /* Check if treatment time is up */
                 if (treatment_ticks >= treatment_max_ticks) {
                     uart_send_string("TIMER: treatment complete\r\n");
                     stop_nebulization();
                     break;
                 }
+#endif
 
                 /* Periodically verify resonance is still locked */
                 if (recheck_ticks >= recheck_max_ticks) {
                     recheck_ticks = 0;
                     uint16_t current = sweep_check_current(resonance.peak_inc);
 
-                    if (current < (resonance.peak_adc - RESONANCE_MARGIN)) {
-                        /* Current dropped — may have lost resonance.
-                         * Could mean: cup is empty, frequency drifted,
-                         * or cup was removed. Re-sweep to find it. */
-                        uart_send_string("RECHECK: current dropped, re-sweeping\r\n");
-                        state = STATE_SWEEP;
+                    /* Dry-cup detection: sustained very low current = empty */
+                    if (current < DRY_CUP_THRESHOLD) {
+                        dry_cup_ticks += recheck_max_ticks;
+                        if (dry_cup_ticks >= dry_cup_max_ticks) {
+                            uart_send_string("DRY: cup empty, auto-stopping\r\n");
+                            stop_nebulization();
+                            break;
+                        }
+                    } else {
+                        dry_cup_ticks = 0;  /* Reset — cup still has liquid */
+                    }
+
+                    /* Resonance drift detection: current dropped but cup isn't empty */
+                    if (current >= DRY_CUP_THRESHOLD &&
+                        current < (resonance.peak_adc - RESONANCE_MARGIN)) {
+                        /* Try narrow re-sweep first (fast, ~150ms) */
+                        uart_send_string("RECHECK: drift, narrow re-sweep\r\n");
+                        sweep_result_t narrow = sweep_narrow(resonance.peak_inc);
+
+                        if (narrow.found) {
+                            resonance = narrow;
+                            uart_send_string("RECHECK: re-locked\r\n");
+#if FREQ_CACHE_ENABLED
+                            if (resonance.peak_inc != cached_freq) {
+                                sweep_save_cached_freq(resonance.peak_inc);
+                                cached_freq = resonance.peak_inc;
+                            }
+#endif
+                        } else {
+                            /* Narrow sweep failed — fall back to full sweep */
+                            uart_send_string("RECHECK: narrow miss, full sweep\r\n");
+                            state = STATE_SWEEP;
+                        }
                     }
                 }
             }
