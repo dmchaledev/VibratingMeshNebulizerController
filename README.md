@@ -61,8 +61,10 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 ├── docs/
 │   ├── BUILD_GUIDE.md        ← Build guide, enclosure options, nursery durability
 │   ├── DIAGRAMS.md           ← Visual diagrams (state machine, signal flow, etc.)
+│   ├── JLCPCB_ORDERING_GUIDE.md ← How to order pre-assembled PCBs from JLCPCB
 │   ├── BOM.csv               ← Bill of materials — full discrete build (~$38)
-│   └── BOM_SIMPLIFIED.csv    ← Bill of materials — boost module build (~$20)
+│   ├── BOM_SIMPLIFIED.csv    ← Bill of materials — boost module build (~$20)
+│   └── BOM_TURNKEY.csv       ← Bill of materials — JLCPCB assembled build (~$15-25/board)
 ├── firmware/
 │   ├── README.md             ← How to compile and flash
 │   └── src/
@@ -73,16 +75,25 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 │       ├── sweep.h           ← Frequency sweep declarations
 │       └── sweep.c           ← Full sweep, narrow sweep, and frequency caching
 └── hardware/
-    └── WIRING.md             ← Pin-by-pin wiring reference
+    ├── WIRING.md             ← Pin-by-pin wiring reference
+    ├── adapters/             ← 3D-printable nebulizer cup adapters
+    │   ├── README.md         ← Measurement guide and assembly instructions
+    │   ├── aerogen_solo_adapter.scad  ← Parametric Aerogen Solo adapter (OpenSCAD)
+    │   └── universal_adapter.scad     ← Parametric adapter for other cup brands
+    └── enclosure/            ← 3D-printable controller enclosure
+        └── controller_enclosure.scad  ← Parametric enclosure with adapter dock
 ```
 
 ## Quick Start
 
 1. **Read [DISCLAIMER.md](DISCLAIMER.md)** — understand what you're building
 2. **Choose your build** — see the comparison table in [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)
-3. **Order parts** from [docs/BOM.csv](docs/BOM.csv) (full, ~$38) or [docs/BOM_SIMPLIFIED.csv](docs/BOM_SIMPLIFIED.csv) (simplified, ~$20)
-4. **Wire the breadboard** following [hardware/WIRING.md](hardware/WIRING.md) and [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)
-5. **Set `BOOST_MODE`** in `firmware/src/config.h` to match your build (DISCRETE or MODULE)
+3. **Order parts:**
+   - **Turnkey** (recommended): Follow [docs/JLCPCB_ORDERING_GUIDE.md](docs/JLCPCB_ORDERING_GUIDE.md) — JLCPCB assembles the PCB for you
+   - **Simplified**: Order from [docs/BOM_SIMPLIFIED.csv](docs/BOM_SIMPLIFIED.csv) (~$20, breadboard/perfboard)
+   - **Full**: Order from [docs/BOM.csv](docs/BOM.csv) (~$38, all discrete components)
+4. **Build the cup adapter** — 3D print from [hardware/adapters/](hardware/adapters/) and install pogo pins
+5. **Set `BOOST_MODE`** in `firmware/src/config.h` (MODULE for Turnkey/Simplified, DISCRETE for Full)
 6. **Compile and flash** firmware per [firmware/README.md](firmware/README.md)
 7. **First power-up** following the procedure in [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)
 
@@ -98,12 +109,13 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 
 ## Estimated Cost
 
-| Build | Parts | + Programmer | Total |
-|-------|-------|-------------|-------|
-| **Simplified** (boost module) | ~$20 | ~$35 | **~$55** |
-| **Full** (discrete boost) | ~$38 | ~$35 | **~$73** |
+| Build | Parts | + Programmer | Total | Per Extra Unit |
+|-------|-------|-------------|-------|----------------|
+| **Turnkey** (JLCPCB assembled) | ~$15-25 | ~$35 | **~$50-60** | ~$15-25 |
+| **Simplified** (boost module) | ~$20 | ~$35 | **~$55** | ~$20 |
+| **Full** (discrete boost) | ~$38 | ~$35 | **~$73** | ~$38 |
 
-The programmer (MPLAB Snap) is a one-time purchase. Most parts ship next-day from DigiKey. The boost module for the simplified build is widely available from Amazon/eBay for $1-2.
+The programmer (MPLAB Snap) is a one-time purchase. The Turnkey build comes from JLCPCB as a fully assembled PCB — you just flash firmware and plug in connectors. JLCPCB minimum order is 5 boards, so you get spares. Add ~$3-5 for a 3D-printed cup adapter and enclosure.
 
 **Compare to:** Aerogen Pro-X controller — **$2,700** out of pocket.
 
