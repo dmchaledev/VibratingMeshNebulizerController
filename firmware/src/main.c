@@ -232,7 +232,7 @@ void main(void)
     led_red_off();
     delay_ms(250);
 
-    uart_send_string("\r\n=== VMN Controller v2.0 ===\r\n");
+    uart_send_string("\r\n=== VMN Controller v3.0 ===\r\n");
 #if TREATMENT_MODE == TREATMENT_MODE_CONTINUOUS
     uart_send_string("Mode: CONTINUOUS (dry-cup auto-stop)\r\n");
 #else

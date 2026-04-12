@@ -1,0 +1,28 @@
+name: OpenSCAD Validation
+
+on:
+  push:
+    paths:
+      - 'hardware/**/*.scad'
+  pull_request:
+    paths:
+      - 'hardware/**/*.scad'
+
+jobs:
+  validate:
+    name: Validate .scad files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenSCAD
+        run: sudo apt-get update && sudo apt-get install -y openscad xvfb
+
+      - name: Validate aerogen_connector_plug.scad
+        run: xvfb-run openscad -o /dev/null hardware/adapters/aerogen_connector_plug.scad
+
+      - name: Validate universal_adapter.scad
+        run: xvfb-run openscad -o /dev/null hardware/adapters/universal_adapter.scad
+
+      - name: Validate controller_enclosure.scad
+        run: xvfb-run openscad -o /dev/null hardware/enclosure/controller_enclosure.scad
