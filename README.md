@@ -15,15 +15,16 @@ The Aerogen Solo is a medical-grade vibrating mesh nebulizer used in ICUs and ho
 
 This project provides everything you need to build a working controller on a breadboard using off-the-shelf parts from DigiKey, a $3 microcontroller, and free development tools from Microchip.
 
-### v2.0 — Simplified Design
+### v3.0 — Turnkey Build
 
-The latest version includes several improvements aimed at reducing cost, simplifying assembly, and supporting the reality of long daily nebulization schedules:
+This version consolidates to a single, streamlined build path: a JLCPCB-assembled PCB with a pre-built boost module. No more choosing between three build tiers.
 
+- **Single build path** — order a pre-assembled PCB from JLCPCB, plug in a boost module, flash firmware, done. ~30 minutes from unboxing to nebulizing.
 - **Continuous treatment mode** — runs until you press stop or the cup is empty. No arbitrary 10-minute timer cutting off a 90-minute airway clearance session.
 - **Dry-cup auto-stop** — detects when the cup is empty and shuts down safely. No babysitting required during long treatments.
-- **Pre-built boost module option** — replace the hardest part of the circuit (discrete boost converter) with a $1-2 pre-built module. Cuts the parts list from ~40 to ~25 components and drops the cost to ~$20.
 - **Frequency caching** — saves the resonant frequency to flash memory. Next power-up tries the cached frequency first for near-instant startup.
 - **Smart re-sweep** — when resonance drifts during a long session, does a fast 150ms targeted re-sweep instead of a 2.4-second full sweep. Less interruption.
+- **3D-printable connector and enclosure** — parametric OpenSCAD designs for the cup connector plug and controller housing, with battery compartment.
 
 ## How It Works
 
@@ -59,11 +60,9 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 ├── README.md                 ← You are here
 ├── DISCLAIMER.md             ← Safety and legal notice (READ THIS FIRST)
 ├── docs/
-│   ├── BUILD_GUIDE.md        ← Build guide, enclosure options, nursery durability
+│   ├── BUILD_GUIDE.md        ← Turnkey build guide and nursery durability tips
 │   ├── DIAGRAMS.md           ← Visual diagrams (state machine, signal flow, etc.)
 │   ├── JLCPCB_ORDERING_GUIDE.md ← How to order pre-assembled PCBs from JLCPCB
-│   ├── BOM.csv               ← Bill of materials — full discrete build (~$38)
-│   ├── BOM_SIMPLIFIED.csv    ← Bill of materials — boost module build (~$20)
 │   └── BOM_TURNKEY.csv       ← Bill of materials — JLCPCB assembled build (~$15-25/board)
 ├── firmware/
 │   ├── README.md             ← How to compile and flash
@@ -76,25 +75,22 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 │       └── sweep.c           ← Full sweep, narrow sweep, and frequency caching
 └── hardware/
     ├── WIRING.md             ← Pin-by-pin wiring reference
-    ├── adapters/             ← 3D-printable nebulizer cup adapters
+    ├── adapters/             ← 3D-printable nebulizer cup connector
     │   ├── README.md         ← Measurement guide and assembly instructions
-    │   ├── aerogen_solo_adapter.scad  ← Parametric Aerogen Solo adapter (OpenSCAD)
-    │   └── universal_adapter.scad     ← Parametric adapter for other cup brands
+    │   ├── aerogen_connector_plug.scad ← Connector plug for Aerogen Solo cup pins
+    │   └── universal_adapter.scad      ← Parametric adapter for other cup brands
     └── enclosure/            ← 3D-printable controller enclosure
-        └── controller_enclosure.scad  ← Parametric enclosure with adapter dock
+        └── controller_enclosure.scad   ← Parametric enclosure with battery compartment
 ```
 
 ## Quick Start
 
 1. **Read [DISCLAIMER.md](DISCLAIMER.md)** — understand what you're building
-2. **Choose your build** — see the comparison table in [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)
-3. **Order parts:**
-   - **Turnkey** (recommended): Follow [docs/JLCPCB_ORDERING_GUIDE.md](docs/JLCPCB_ORDERING_GUIDE.md) — JLCPCB assembles the PCB for you
-   - **Simplified**: Order from [docs/BOM_SIMPLIFIED.csv](docs/BOM_SIMPLIFIED.csv) (~$20, breadboard/perfboard)
-   - **Full**: Order from [docs/BOM.csv](docs/BOM.csv) (~$38, all discrete components)
-4. **Build the cup adapter** — 3D print from [hardware/adapters/](hardware/adapters/) and install pogo pins
-5. **Set `BOOST_MODE`** in `firmware/src/config.h` (MODULE for Turnkey/Simplified, DISCRETE for Full)
-6. **Compile and flash** firmware per [firmware/README.md](firmware/README.md)
+2. **Order the PCB** — follow [docs/JLCPCB_ORDERING_GUIDE.md](docs/JLCPCB_ORDERING_GUIDE.md), JLCPCB assembles the board for you
+3. **Order parts** — boost module, pogo pins, JST cables, screws (see [docs/BOM_TURNKEY.csv](docs/BOM_TURNKEY.csv))
+4. **3D print** the connector plug and enclosure from [hardware/](hardware/)
+5. **Compile and flash** firmware per [firmware/README.md](firmware/README.md) (default config is ready to go)
+6. **Assemble** — mount PCB in enclosure, plug in boost module and connector cable
 7. **First power-up** following the procedure in [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)
 
 ## Key Reference Documents
@@ -109,13 +105,17 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 
 ## Estimated Cost
 
-| Build | Parts | + Programmer | Total | Per Extra Unit |
-|-------|-------|-------------|-------|----------------|
-| **Turnkey** (JLCPCB assembled) | ~$15-25 | ~$35 | **~$50-60** | ~$15-25 |
-| **Simplified** (boost module) | ~$20 | ~$35 | **~$55** | ~$20 |
-| **Full** (discrete boost) | ~$38 | ~$35 | **~$73** | ~$38 |
+| Item | Cost |
+|------|------|
+| JLCPCB assembled PCB (5-board min) | ~$10-16/board |
+| Boost module (MT3608) | ~$1-2 |
+| 3D-printed connector + enclosure | ~$3-5 |
+| Pogo pins + JST cables + screws | ~$3-5 |
+| **Per-unit total** | **~$15-25** |
+| Programmer (MPLAB Snap, one-time) | ~$35 |
+| **First build total** | **~$50-60** |
 
-The programmer (MPLAB Snap) is a one-time purchase. The Turnkey build comes from JLCPCB as a fully assembled PCB — you just flash firmware and plug in connectors. JLCPCB minimum order is 5 boards, so you get spares. Add ~$3-5 for a 3D-printed cup adapter and enclosure.
+JLCPCB minimum order is 5 boards, so you get spares. The programmer is a one-time purchase.
 
 **Compare to:** Aerogen Pro-X controller — **$2,700** out of pocket.
 

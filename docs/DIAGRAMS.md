@@ -12,11 +12,7 @@ How the controller moves between states from power-on to nebulization:
 stateDiagram-v2
     [*] --> IDLE : Power on
 
-    IDLE --> BOOST_RAMP : Button press\n(discrete boost)
-    IDLE --> SWEEP : Button press\n(boost module)
-
-    BOOST_RAMP --> SWEEP : Voltage at target
-    BOOST_RAMP --> IDLE : Button press (cancel)
+    IDLE --> SWEEP : Button press
 
     SWEEP --> RUNNING : Resonance found
     SWEEP --> ERROR : No resonance\n(no cup?)
@@ -50,9 +46,7 @@ flowchart LR
 
     subgraph MCU ["PIC16F1713"]
         NCO["NCO\n90-150 kHz"] 
-        DAC["DAC\n5-bit"]
         ADC["ADC\n10-bit"]
-        CWG["CWG\ndead-band"]
         LOGIC["State Machine\n+ Sweep Algorithm"]
     end
 
@@ -67,8 +61,6 @@ flowchart LR
         VPEAK["Peak Voltage\nDetector"]
     end
 
-    DAC -.->|Voltage ref| BOOST
-    CWG -->|Gate drive| BOOST
     NCO -->|Square wave| Q4
     VBOOST --> Q4
     Q4 --> LC
@@ -79,7 +71,6 @@ flowchart LR
     VPEAK -->|AN2| ADC
     ADC --> LOGIC
     LOGIC --> NCO
-    LOGIC --> DAC
 ```
 
 ---
@@ -120,8 +111,7 @@ What happens during a complete nebulization session:
 
 ```mermaid
 flowchart TD
-    IDLE(["IDLE\nRed LED solid"]) -->|"Button\npress"| RAMP["Boost Ramp\n(400 ms)"]
-    RAMP --> SWEEP["Frequency Sweep\n(~150 ms cached,\n~2.4 sec full)"]
+    IDLE(["IDLE\nRed LED solid"]) -->|"Button\npress"| SWEEP["Frequency Sweep\n(~150 ms cached,\n~2.4 sec full)"]
     SWEEP -->|"Found"| NEB["Nebulizing\nGreen LED solid"]
 
     NEB --> TICK{"Every\n5 seconds"}
@@ -174,34 +164,18 @@ flowchart LR
 
 ---
 
-## Power Path Comparison
+## Power Path
 
-Full discrete build vs. simplified boost module build:
+How the boost module provides high-voltage DC to the output stage:
 
 ```mermaid
-flowchart TD
-    subgraph DISCRETE ["Full Build (Discrete Boost)"]
-        direction LR
-        D1["4.5V\nInput"] --> D2["L1\n22 uH"]
-        D2 --> D3["Q2\nMOSFET"]
-        D3 --> D4["D1\nSchottky"]
-        D4 --> D5["C2+C9\nFilter"]
-        D5 --> D6["VBOOST\n10-20V"]
-        D7["DAC"] -.->|"Feedback\ncontrol"| D3
-        D8["CWG"] -->|"Gate\ndrive"| D3
-    end
+flowchart LR
+    INPUT["USB 5V\nor\n3x AAA 4.5V"] --> FUSE["1A\nFuse"]
+    FUSE --> MODULE["MT3608/XL6009\nBoost Module"]
+    MODULE --> VBOOST["VBOOST\n~12V DC"]
+    VBOOST --> OUTPUT["Output Stage\n(LC Circuit + PZT)"]
+    TRIM["Trim pot\n(set once)"] -.->|"Voltage\nadjust"| MODULE
 
-    subgraph MODULE ["Simplified Build (Boost Module)"]
-        direction LR
-        M1["4.5V\nInput"] --> M2["MT3608\nModule"]
-        M2 --> M3["VBOOST\n~12V"]
-        M4["Trim pot"] -.->|"Set once"| M2
-    end
-
-    D6 --> OUT1["Output Stage"]
-    M3 --> OUT2["Output Stage"]
-
-    style DISCRETE fill:#fff3e0
     style MODULE fill:#e8f5e9
 ```
 
@@ -214,29 +188,23 @@ What the MCU measures during operation:
 ```mermaid
 flowchart TD
     subgraph SIGNALS ["ADC Channels"]
-        AN0["AN0 (pin 2)\nBoost Current"]
         AN1["AN1 (pin 3)\nOutput Current"]
         AN2["AN2 (pin 4)\nPeak Voltage"]
-        AN3["AN3 (pin 5)\nBoost Voltage"]
     end
 
     subgraph USAGE ["What They Tell Us"]
-        U0["Boost overcurrent\nprotection"]
         U1["PRIMARY: Resonance\ndetection + dry cup"]
         U2["Output waveform\namplitude"]
-        U3["Boost voltage\nfeedback to DAC"]
     end
 
-    AN0 --> U0
     AN1 --> U1
     AN2 --> U2
-    AN3 --> U3
 
     style AN1 fill:#2d6,color:#fff
     style U1 fill:#2d6,color:#fff
 ```
 
-**AN1 (output current) is the most important signal.** It's how the controller finds resonance, tracks resonance drift, and detects a dry cup. The sweep algorithm measures this at each frequency step — the frequency with the highest AN1 reading is the resonant frequency.
+**AN1 (output current) is the most important signal.** It's how the controller finds resonance, tracks resonance drift, and detects a dry cup. The sweep algorithm measures this at each frequency step — the frequency with the highest AN1 reading is the resonant frequency. (AN0 and AN3 are used only in discrete boost mode and are unused in the turnkey build.)
 
 ---
 
