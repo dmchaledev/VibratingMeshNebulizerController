@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1] — 2026-04-12
+
+Quality-of-life build for daily nursery use: rechargeable cell, USB-C
+charging, and a status display.
+
+### Added
+- 1S LiPo pouch cell (103450, ~2000 mAh) powering MCU + boost module
+  directly (3.0-4.2 V rail)
+- TP4056 + DW01A USB-C charging module with over-charge, over-discharge
+  and short-circuit protection
+- 16x2 character display driver (`firmware/src/lcd.c`) with bit-bang
+  I2C over RC4/RC5 and auto-probing PCF8574 backpack address
+- `LCD_IS_OLED` config flag — same driver handles cheap HD44780 LCDs
+  (~$3) and premium character OLEDs like Winstar WEH001602, Newhaven
+  NHD-0216AW, and Matrix Orbital MOP-AO162 (~$25)
+- Battery monitoring via the PIC's Fixed Voltage Reference — reads VDD
+  with zero external parts (`peripherals.c::battery_read_mv`)
+- Piecewise-linear LiPo state-of-charge curve
+- Soft battery cutoff at 3.1 V — warns the user and auto-stops any
+  running treatment before the DW01A hardware cutoff trips
+- Splash screen showing firmware version on power-up
+- Status line showing state + resonant frequency, and battery percent +
+  elapsed time while running
+- `enclosure_config.scad` — shared dimensions used by both base and
+  lid SCAD files
+- `controller_enclosure_lid.scad` — separate lid file with a 16x2
+  viewing window, four M3 standoffs and a wire-pass slot
+- LiPo + TP4056 bay in the enclosure base with USB-C aperture on the
+  front wall and an internal shelf that stacks the TP4056 above the
+  pouch cell
+- New BOM rows and cost estimates for the LiPo, TP4056, and display
+  options (~$30-45 with LCD, ~$45-70 with character OLED)
+
+### Changed
+- `controller_enclosure.scad` now renders only the base and `include`s
+  the shared config file. PCB component clearance bumped from 12 mm to
+  18 mm so the LCD backpack has room to hang down from the lid.
+- PCB USB-C receptacle replaced with a JST-PH BAT IN header — the
+  USB-C port now lives on the TP4056 module
+- RC4/RC5 reassigned from "unused" to software I2C for the display
+- Firmware banner bumped to v3.1
+- Build guide rewritten with new steps for LiPo bay prep, display
+  mounting, and a first power-up sequence that includes the splash
+  and status screens
+
+### Fixed
+- ICSP cutout Y-coordinate bug in `controller_enclosure.scad` that
+  mixed X and Y values
+
 ## [3.0] — 2026-04-12
 
 Consolidated to a single turnkey build path. No more choosing between build tiers.

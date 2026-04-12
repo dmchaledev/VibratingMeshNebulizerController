@@ -15,16 +15,38 @@ The Aerogen Solo is a medical-grade vibrating mesh nebulizer used in ICUs and ho
 
 This project provides everything you need to build a working controller on a breadboard using off-the-shelf parts from DigiKey, a $3 microcontroller, and free development tools from Microchip.
 
+### v3.1 — Rechargeable + Display
+
+v3.1 adds the three quality-of-life features that matter most for an
+every-day nursery device: a rechargeable LiPo cell, USB-C charging,
+and a status display.
+
+- **Rechargeable 1S LiPo pouch cell** — ~2000 mAh (103450). Drops into
+  an internal bay in the enclosure. Runs ~3-5 treatments per charge.
+- **USB-C charging via TP4056 + DW01A** — plug in any USB-C cable to
+  recharge. DW01A handles over-charge, over-discharge and short-circuit
+  protection. The firmware adds a software cutoff at 3.1 V so it warns
+  and stops cleanly before the hardware cutoff trips.
+- **16x2 character display on the lid** — shows state, resonant
+  frequency, elapsed treatment time, battery percent and voltage.
+  Drop-in compatible with a cheap HD44780 LCD (~$3) or a premium
+  character OLED (Winstar / Newhaven / Matrix Orbital, ~$25). Single
+  config flag `LCD_IS_OLED` switches the driver.
+- **Split enclosure** — base and lid are now separate SCAD files
+  sharing an `enclosure_config.scad`, so you can iterate on either
+  without re-rendering the other.
+- **Zero-parts battery monitor** — the PIC's built-in Fixed Voltage
+  Reference doubles as a VDD meter, so battery voltage is read via
+  ADC without any external divider.
+
 ### v3.0 — Turnkey Build
 
-This version consolidates to a single, streamlined build path: a JLCPCB-assembled PCB with a pre-built boost module. No more choosing between three build tiers.
-
-- **Single build path** — order a pre-assembled PCB from JLCPCB, plug in a boost module, flash firmware, done. ~30 minutes from unboxing to nebulizing.
-- **Continuous treatment mode** — runs until you press stop or the cup is empty. No arbitrary 10-minute timer cutting off a 90-minute airway clearance session.
-- **Dry-cup auto-stop** — detects when the cup is empty and shuts down safely. No babysitting required during long treatments.
-- **Frequency caching** — saves the resonant frequency to flash memory. Next power-up tries the cached frequency first for near-instant startup.
-- **Smart re-sweep** — when resonance drifts during a long session, does a fast 150ms targeted re-sweep instead of a 2.4-second full sweep. Less interruption.
-- **3D-printable connector and enclosure** — parametric OpenSCAD designs for the cup connector plug and controller housing, with battery compartment.
+- **Single build path** — order a pre-assembled PCB from JLCPCB, plug in a boost module, flash firmware, done.
+- **Continuous treatment mode** — runs until you press stop or the cup is empty.
+- **Dry-cup auto-stop** — detects when the cup is empty and shuts down safely.
+- **Frequency caching** — saves the resonant frequency to flash memory for fast startup.
+- **Smart re-sweep** — when resonance drifts during a long session, does a fast 150ms targeted re-sweep.
+- **3D-printable connector and enclosure** — parametric OpenSCAD designs.
 
 ## How It Works
 
@@ -79,8 +101,10 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
     │   ├── README.md         ← Measurement guide and assembly instructions
     │   ├── aerogen_connector_plug.scad ← Connector plug for Aerogen Solo cup pins
     │   └── universal_adapter.scad      ← Parametric adapter for other cup brands
-    └── enclosure/            ← 3D-printable controller enclosure
-        └── controller_enclosure.scad   ← Parametric enclosure with battery compartment
+    └── enclosure/            ← 3D-printable controller enclosure (v3.1 split)
+        ├── enclosure_config.scad       ← Shared dimensions used by base and lid
+        ├── controller_enclosure.scad   ← Base with LiPo + TP4056 bay
+        └── controller_enclosure_lid.scad ← Lid with LCD/OLED window + standoffs
 ```
 
 ## Quick Start
@@ -103,17 +127,21 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 | [Arrow Reference Design](https://www.arrow.com/en/reference-designs/vibrating-mesh-nebulizer-reference-design/f2a9476a8ee42cf52a40b74023c3b682227100c55cf2) | Arrow's page for the AN2265 design |
 | [MDPI: Frequency & Voltage Effects](https://www.mdpi.com/2076-3417/11/3/1296) | Research on mesh nebulizer drive parameters |
 
-## Estimated Cost
+## Estimated Cost (v3.1)
 
 | Item | Cost |
 |------|------|
 | JLCPCB assembled PCB (5-board min) | ~$10-16/board |
 | Boost module (MT3608) | ~$1-2 |
+| 1S LiPo pouch cell (103450, 2000 mAh) | ~$8-12 |
+| TP4056 + DW01A Type-C charger | ~$0.50-2 |
+| 16x2 LCD + I2C backpack | ~$3-5 |
 | 3D-printed connector + enclosure | ~$3-5 |
 | Pogo pins + JST cables + screws | ~$3-5 |
-| **Per-unit total** | **~$15-25** |
+| **Per-unit total (LCD)** | **~$30-45** |
+| **Per-unit total (character OLED)** | **~$45-70** |
 | Programmer (MPLAB Snap, one-time) | ~$35 |
-| **First build total** | **~$50-60** |
+| **First build total** | **~$75-105** |
 
 JLCPCB minimum order is 5 boards, so you get spares. The programmer is a one-time purchase.
 
