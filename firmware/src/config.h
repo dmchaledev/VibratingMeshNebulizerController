@@ -85,10 +85,10 @@
  *              Set the module's output voltage to ~12V with its trim pot.
  *              Eliminates L1, Q2, D1, R9, R5, R8, C2, C9, and all boost
  *              firmware (DAC ramp, CWG drive). Much simpler to build.
- *              See docs/BUILD_GUIDE.md "Simplified Build" section. */
+ *              See docs/BUILD_GUIDE.md for details. */
 #define BOOST_MODE_DISCRETE     0
 #define BOOST_MODE_MODULE       1
-#define BOOST_MODE              BOOST_MODE_DISCRETE /* Change to MODULE for simplified build */
+#define BOOST_MODE              BOOST_MODE_MODULE   /* Turnkey build uses pre-built boost module */
 
 /* =========================================================================
  * RESONANCE DETECTION

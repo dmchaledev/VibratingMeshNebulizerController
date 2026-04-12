@@ -1,18 +1,16 @@
 /*
  * controller_enclosure.scad
  *
- * 3D-printable enclosure for the assembled nebulizer controller PCB.
- * Features integrated adapter dock with dovetail mount for cup adapters.
+ * 3D-printable enclosure for the assembled nebulizer controller PCB
+ * with integrated battery compartment for 3x AAA cells.
  *
- * Designed for a JLCPCB-assembled PCB (see docs/JLCPCB_ORDERING_GUIDE.md)
- * but also works with a perfboard build.
+ * Designed for a JLCPCB-assembled PCB (see docs/JLCPCB_ORDERING_GUIDE.md).
  *
  * USAGE:
  *   1. Measure your assembled PCB and update dimensions below
- *   2. Choose your power connector type (USB-C, barrel jack, or battery)
- *   3. Preview (F5), Render (F6), Export STL
- *   4. Print BOTH the base and lid
- *   5. Print in PETG for best durability and chemical resistance
+ *   2. Preview (F5), Render (F6), Export STL
+ *   3. Print BOTH the base and lid
+ *   4. Print in PETG for best durability and chemical resistance
  *
  * License: MIT
  */
@@ -21,22 +19,40 @@
  * PCB DIMENSIONS
  *
  * Measure your assembled PCB (or use the reference design dimensions).
- * Include any components that stick up above the board surface.
+ * The JLCPCB turnkey board is a 2-layer ~50x70mm FR4 PCB.
  * ===================================================================== */
 
-pcb_width           = 50.0;     // PCB width (X)
+pcb_width           = 50.0;     // PCB width (X) — short dimension
 pcb_depth           = 70.0;     // PCB depth (Y) — long dimension
 pcb_thickness       = 1.6;      // PCB board thickness (standard FR4)
-pcb_component_height= 12.0;    // Max height of tallest component on top side
-pcb_bottom_clearance= 2.0;     // Clearance below PCB for solder joints/traces
-pcb_corner_radius   = 2.0;     // PCB corner radius (0 = square)
+pcb_component_height= 12.0;     // Max height of tallest component on top side
+                                 // (JST headers ~8mm, tactile switch ~5mm,
+                                 //  boost module plugs in externally via JST)
+pcb_bottom_clearance= 2.0;      // Clearance below PCB for solder joints/traces
+pcb_corner_radius   = 2.0;      // PCB corner radius (0 = square)
 
 // PCB mounting holes (M2.5 screws)
 pcb_mount_holes     = true;
-mount_hole_diameter = 2.7;      // For M2.5 screws
-mount_hole_inset_x  = 3.5;     // Distance from PCB edge to hole center
+mount_hole_diameter = 2.7;      // For M2.5 screws (2.5mm + clearance)
+mount_hole_inset_x  = 3.5;      // Distance from PCB edge to hole center
 mount_hole_inset_y  = 3.5;
-mount_standoff_h    = 3.0;     // Height of standoffs (= pcb_bottom_clearance + margin)
+mount_standoff_h    = 3.0;      // Height of standoffs
+
+/* =====================================================================
+ * BATTERY COMPARTMENT
+ *
+ * Space for 3x AAA batteries (side-by-side configuration).
+ * AAA cell: 44.5mm long x 10.5mm diameter
+ * A 3-cell AAA holder is approximately 52mm x 35mm x 12mm.
+ * The battery compartment sits alongside the PCB on the long edge.
+ * ===================================================================== */
+
+battery_enable      = true;
+battery_holder_w    = 36.0;     // Battery holder width (3 cells side-by-side + tolerance)
+battery_holder_d    = 53.0;     // Battery holder depth (AAA length + spring + tolerance)
+battery_holder_h    = 12.0;     // Battery holder height (cell diameter + tolerance)
+battery_wall        = 1.5;      // Thin wall between battery compartment and PCB cavity
+battery_clearance   = 1.0;      // Extra clearance around holder for easy insertion
 
 /* =====================================================================
  * ENCLOSURE PARAMETERS
@@ -48,9 +64,20 @@ lid_lip_height      = 3.0;      // Overlap between lid and base
 lid_lip_clearance   = 0.3;      // Tolerance for lid fit
 
 // Computed internal dimensions
-int_width  = pcb_width + 2.0;   // Internal clearance around PCB
-int_depth  = pcb_depth + 2.0;
-int_height = pcb_bottom_clearance + pcb_thickness + pcb_component_height + 2.0;
+// PCB cavity
+int_pcb_width  = pcb_width + 2.0;    // Internal clearance around PCB
+int_pcb_depth  = pcb_depth + 2.0;
+int_pcb_height = pcb_bottom_clearance + pcb_thickness + pcb_component_height + 2.0;
+
+// Battery cavity (alongside PCB on the X axis)
+int_bat_width  = battery_enable ? battery_holder_w + battery_clearance * 2 : 0;
+int_bat_depth  = battery_holder_d + battery_clearance * 2;
+int_bat_height = battery_holder_h + 2.0;
+
+// Overall internal dimensions
+int_width  = int_pcb_width + (battery_enable ? battery_wall + int_bat_width : 0);
+int_depth  = max(int_pcb_depth, battery_enable ? int_bat_depth : 0);
+int_height = max(int_pcb_height, battery_enable ? int_bat_height : 0);
 
 // External dimensions
 ext_width  = int_width + wall_thickness * 2;
@@ -58,23 +85,28 @@ ext_depth  = int_depth + wall_thickness * 2;
 ext_height = int_height + wall_thickness + base_height_extra;
 corner_r   = pcb_corner_radius + 1.0;
 
+// PCB offset from enclosure center (shifted left to make room for battery)
+pcb_offset_x = battery_enable ? -(int_bat_width + battery_wall) / 2 : 0;
+
+// Battery compartment offset from enclosure center (shifted right)
+bat_offset_x = battery_enable ? (int_pcb_width + battery_wall) / 2 : 0;
+
 /* =====================================================================
  * CONNECTORS AND OPENINGS
  * ===================================================================== */
 
-// USB-C power input (on the short edge)
+// USB-C power input (on the short edge, PCB side)
 usb_c_enable        = true;
 usb_c_width         = 9.5;      // USB-C plug width
 usb_c_height        = 3.5;      // USB-C plug height
-usb_c_center_y      = 0;        // Offset from edge center (0 = centered)
-usb_c_z_offset      = mount_standoff_h + pcb_thickness + 1.5; // Height from internal floor
+usb_c_center_y      = 0;        // Offset from PCB center (0 = centered on PCB)
+usb_c_z_offset      = mount_standoff_h + pcb_thickness + 1.5;
 
-// JST-XH 2-pin output to nebulizer cup adapter (on the opposite short edge)
-jst_enable          = true;
-jst_width           = 8.0;      // JST-XH 2-pin housing width
-jst_height          = 6.5;      // JST-XH 2-pin housing height
-jst_center_y        = 0;
-jst_z_offset        = mount_standoff_h + pcb_thickness + 2.0;
+// Cable gland / strain relief for connector cable (on the opposite short edge)
+cable_enable        = true;
+cable_hole_diameter = 6.0;       // For PG7 cable gland or strain relief grommet
+cable_center_y      = 0;
+cable_z_offset      = mount_standoff_h + pcb_thickness + 3.0;
 
 // ICSP programming header (on a long edge, accessible through a small port)
 icsp_enable         = true;
@@ -83,35 +115,27 @@ icsp_height         = 3.0;
 icsp_center_x       = 0;
 icsp_z_offset       = mount_standoff_h + pcb_thickness + 1.0;
 
+// Battery compartment access (slot on the side for battery holder wires)
+battery_wire_slot_w = 4.0;      // Width of wire slot between battery and PCB cavities
+battery_wire_slot_h = 3.0;
+
 /* =====================================================================
  * USER INTERFACE
  * ===================================================================== */
 
 // Start/stop button (through the lid)
 button_enable       = true;
-button_diameter     = 8.0;      // Hole for button access (or button cap)
-button_x            = -int_width/4;  // Position on lid
+button_diameter     = 8.0;
+button_x            = pcb_offset_x - int_pcb_width/4;
 button_y            = int_depth/4;
 
 // LED windows (through the lid)
 led_enable          = true;
-led_diameter        = 3.5;      // LED window diameter
-led_red_x           = int_width/4;
+led_diameter        = 3.5;
+led_red_x           = pcb_offset_x + int_pcb_width/4;
 led_red_y           = int_depth/4;
-led_green_x         = int_width/4;
+led_green_x         = pcb_offset_x + int_pcb_width/4;
 led_green_y         = int_depth/4 + 8.0;
-
-/* =====================================================================
- * ADAPTER DOCK
- *
- * Dovetail slot on one end of the enclosure for mounting the cup adapter.
- * The adapter slides in from the side and locks with a friction fit.
- * ===================================================================== */
-
-adapter_dock_enable = true;
-dovetail_width      = 10.0;     // Must match adapter's dovetail_width
-dovetail_height     = 4.0;      // Must match adapter's dovetail_height
-dock_length         = 30.0;     // Length of dovetail channel (along enclosure)
 
 /* =====================================================================
  * VENTILATION
@@ -155,29 +179,48 @@ module enclosure_base() {
                                     ext_depth - wall_thickness * 2 + lid_lip_clearance * 2,
                                     lid_lip_height + 0.2, corner_r - wall_thickness + 0.5);
                 }
-
-            // Adapter dock rail (external)
-            if (adapter_dock_enable)
-                adapter_dock();
         }
 
-        // Hollow out interior
-        translate([0, 0, wall_thickness])
-            rounded_box(int_width, int_depth, int_height + lid_lip_height + 1, corner_r - wall_thickness + 0.5);
+        // === Hollow out PCB cavity ===
+        translate([pcb_offset_x, 0, wall_thickness])
+            rounded_box(int_pcb_width, int_pcb_depth,
+                        int_height + lid_lip_height + 1,
+                        max(0.5, corner_r - wall_thickness));
 
-        // USB-C port
+        // === Hollow out battery cavity ===
+        if (battery_enable)
+            translate([bat_offset_x, 0, wall_thickness])
+                rounded_box(int_bat_width, int_bat_depth,
+                            int_bat_height + 1,
+                            max(0.5, corner_r - wall_thickness));
+
+        // === Wire slot between battery and PCB cavities ===
+        if (battery_enable) {
+            slot_x = pcb_offset_x + int_pcb_width/2 - 0.1;
+            translate([slot_x, -battery_wire_slot_w/2, wall_thickness + 1])
+                cube([battery_wall + 0.2, battery_wire_slot_w, battery_wire_slot_h]);
+        }
+
+        // === Connector cutouts ===
+
+        // USB-C port (front short edge)
         if (usb_c_enable)
-            translate([0, -ext_depth/2 - 0.1, wall_thickness + usb_c_z_offset])
+            translate([pcb_offset_x + usb_c_center_y, -ext_depth/2 - 0.1,
+                       wall_thickness + usb_c_z_offset])
                 usb_c_cutout();
 
-        // JST output port
-        if (jst_enable)
-            translate([0, ext_depth/2 - wall_thickness - 0.1, wall_thickness + jst_z_offset])
-                jst_cutout();
+        // Cable exit (rear short edge) — for connector plug cable
+        if (cable_enable)
+            translate([pcb_offset_x + cable_center_y, ext_depth/2 - wall_thickness/2,
+                       wall_thickness + cable_z_offset])
+                rotate([-90, 0, 0])
+                    cylinder(d=cable_hole_diameter, h=wall_thickness + 1);
 
-        // ICSP port
+        // ICSP port (long edge, PCB side)
         if (icsp_enable)
-            translate([-ext_width/2 - 0.1, icsp_center_x, wall_thickness + icsp_z_offset])
+            translate([-ext_width/2 - 0.1,
+                       pcb_offset_x + icsp_center_x,
+                       wall_thickness + icsp_z_offset])
                 icsp_cutout();
 
         // Ventilation slots on bottom
@@ -188,6 +231,10 @@ module enclosure_base() {
     // PCB mounting standoffs
     if (pcb_mount_holes)
         pcb_standoffs();
+
+    // Battery holder retaining ribs
+    if (battery_enable)
+        battery_ribs();
 }
 
 /* =====================================================================
@@ -195,8 +242,6 @@ module enclosure_base() {
  * ===================================================================== */
 
 module enclosure_lid() {
-    lid_total_height = wall_thickness + lid_lip_height;
-
     // Position lid next to base for printing
     translate([ext_width + 10, 0, 0]) {
         difference() {
@@ -224,20 +269,20 @@ module enclosure_lid() {
                     cylinder(d=led_diameter, h=wall_thickness + 0.2);
             }
 
-            // Ventilation slots on lid
+            // Ventilation slots on lid (over PCB area only)
             if (vent_enable)
                 for (i = [0:vent_slot_count-1]) {
-                    translate([-vent_slot_length/2,
+                    translate([pcb_offset_x - vent_slot_length/2,
                                -((vent_slot_count-1) * vent_slot_spacing)/2 + i * vent_slot_spacing,
                                -0.1])
                         cube([vent_slot_length, vent_slot_width, wall_thickness + 0.2]);
                 }
-        }
 
-        // LED light pipes (small cylinders that channel light to the surface)
-        if (led_enable) {
-            // These are solid transparent inserts - print in clear filament
-            // or leave holes and use hot glue as a light pipe
+            // Battery compartment label recess (optional: emboss "BATT" on lid)
+            if (battery_enable)
+                translate([bat_offset_x, 0, wall_thickness - 0.4])
+                    linear_extrude(height=0.5)
+                        text("BATT", size=6, halign="center", valign="center");
         }
     }
 }
@@ -248,19 +293,11 @@ module enclosure_lid() {
 
 module usb_c_cutout() {
     // Rounded rectangle for USB-C
-    translate([0, 0, 0])
-        rotate([-90, 0, 0])
-            linear_extrude(height=wall_thickness + 0.2)
-                offset(r=1)
-                    offset(delta=-1)
-                        square([usb_c_width, usb_c_height], center=true);
-}
-
-module jst_cutout() {
-    // Rectangle for JST-XH connector
     rotate([-90, 0, 0])
         linear_extrude(height=wall_thickness + 0.2)
-            square([jst_width, jst_height], center=true);
+            offset(r=1)
+                offset(delta=-1)
+                    square([usb_c_width, usb_c_height], center=true);
 }
 
 module icsp_cutout() {
@@ -277,10 +314,14 @@ module icsp_cutout() {
 module pcb_standoffs() {
     standoff_od = mount_hole_diameter + 3.0;
     positions = [
-        [-pcb_width/2 + mount_hole_inset_x, -pcb_depth/2 + mount_hole_inset_y],
-        [pcb_width/2 - mount_hole_inset_x,  -pcb_depth/2 + mount_hole_inset_y],
-        [-pcb_width/2 + mount_hole_inset_x, pcb_depth/2 - mount_hole_inset_y],
-        [pcb_width/2 - mount_hole_inset_x,  pcb_depth/2 - mount_hole_inset_y]
+        [pcb_offset_x - pcb_width/2 + mount_hole_inset_x,
+         -pcb_depth/2 + mount_hole_inset_y],
+        [pcb_offset_x + pcb_width/2 - mount_hole_inset_x,
+         -pcb_depth/2 + mount_hole_inset_y],
+        [pcb_offset_x - pcb_width/2 + mount_hole_inset_x,
+         pcb_depth/2 - mount_hole_inset_y],
+        [pcb_offset_x + pcb_width/2 - mount_hole_inset_x,
+         pcb_depth/2 - mount_hole_inset_y]
     ];
 
     for (pos = positions) {
@@ -295,42 +336,36 @@ module pcb_standoffs() {
 }
 
 /* =====================================================================
+ * BATTERY HOLDER RIBS
+ *
+ * Small ribs on the floor and walls of the battery cavity to hold
+ * a standard 3xAAA battery holder in place.
+ * ===================================================================== */
+
+module battery_ribs() {
+    rib_h = 2.0;       // Rib height above cavity floor
+    rib_w = 1.5;       // Rib width
+
+    // Two ribs along the long axis to cradle the battery holder
+    for (side = [-1, 1]) {
+        translate([bat_offset_x + side * (battery_holder_w/2 + battery_clearance/2),
+                   -battery_holder_d/4,
+                   wall_thickness]) {
+            cube([rib_w, battery_holder_d/2, rib_h]);
+        }
+    }
+}
+
+/* =====================================================================
  * VENTILATION SLOTS
  * ===================================================================== */
 
 module vent_slots() {
     for (i = [0:vent_slot_count-1]) {
-        translate([-vent_slot_length/2,
+        translate([pcb_offset_x - vent_slot_length/2,
                    -((vent_slot_count-1) * vent_slot_spacing)/2 + i * vent_slot_spacing,
                    -0.1])
             cube([vent_slot_length, vent_slot_width, wall_thickness + 0.2]);
-    }
-}
-
-/* =====================================================================
- * ADAPTER DOCK — Dovetail slot on enclosure for cup adapter
- * ===================================================================== */
-
-module adapter_dock() {
-    // The dock is a raised platform on one end with a dovetail channel
-    dock_width = dovetail_width + wall_thickness * 2 + 4;
-    dock_depth = dock_length;
-
-    translate([0, ext_depth/2 + dock_depth/2, 0]) {
-        difference() {
-            // Dock platform
-            rounded_box(dock_width, dock_depth, wall_thickness + dovetail_height + 2, 2);
-
-            // Dovetail channel (the adapter slides into this)
-            translate([0, 0, wall_thickness + 1]) {
-                // Main channel
-                cube([dovetail_width + 0.4, dock_depth + 2, dovetail_height + 0.2], center=true);
-
-                // Entry opening on the side
-                translate([0, dock_depth/2, 0])
-                    cube([dovetail_width + 2, 4, dovetail_height + 2], center=true);
-            }
-        }
     }
 }
 
@@ -345,30 +380,35 @@ enclosure_base();
 enclosure_lid();
 
 /* =====================================================================
- * NOTES
+ * DIMENSION SUMMARY (for reference)
+ *
+ * With default parameters:
+ *
+ *   PCB cavity:     52.0 x 72.0 x 19.6 mm (internal)
+ *   Battery cavity: 38.0 x 55.0 x 14.0 mm (internal)
+ *   Overall external: ~97.0 x 77.0 x 25.6 mm (+ wall + lid)
+ *
+ *   3x AAA holder:  ~36 x 53 x 12 mm (fits with 1mm clearance all around)
+ *   PCB:            50 x 70 x 1.6 mm (with 1mm clearance all around)
+ *   Tallest component on PCB: ~12mm (JST headers, boost module JST plug)
+ *
+ *   Battery holder wires route through a 4x3mm slot in the divider wall
+ *   to the PCB power input.
  *
  * PRINTING:
  *   - Print base upright (open side up)
  *   - Print lid upside down (outer surface on build plate)
- *   - PETG recommended for nursery environment (chemical resistant)
+ *   - PETG recommended for nursery environment
  *   - 0.2mm layer height, 30-50% infill
  *
  * ASSEMBLY:
  *   1. Insert PCB onto standoffs, secure with M2.5 screws
- *   2. Route USB-C cable through port
- *   3. Connect JST cable to cup adapter
- *   4. Snap lid on
- *   5. Slide cup adapter onto dovetail dock
+ *   2. Route USB-C cable through port (or use batteries)
+ *   3. Insert 3xAAA battery holder, route wires through slot
+ *   4. Connect connector plug cable through cable gland
+ *   5. Snap lid on
  *
  * SEALING:
  *   For nursery use, add a thin bead of silicone around the lid
  *   perimeter (not glue — you want it removable for maintenance).
- *   This keeps saline mist out.
- *
- * LABELING:
- *   Use a label maker or emboss text during printing:
- *   - "POWER" near USB-C port
- *   - "CUP" near JST port / adapter dock
- *   - "START/STOP" near button
- *   - Red dot by red LED window, green dot by green LED window
  * ===================================================================== */

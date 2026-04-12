@@ -1,187 +1,139 @@
-# Nebulizer Cup Adapter System
+# Nebulizer Cup Connector System
 
-3D-printable adapters that provide reliable, repeatable electrical contact between the controller and various vibrating mesh nebulizer cups.
+3D-printable connector plug and adapters that provide reliable electrical contact between the controller and nebulizer cups.
 
-**Read [DISCLAIMER.md](../../DISCLAIMER.md) before building any adapter.**
+**Read [DISCLAIMER.md](../../DISCLAIMER.md) before building.**
 
 ---
 
 ## Overview
 
-Each nebulizer manufacturer uses a different cup form factor, but they all have the same basic requirement: two electrical contacts to the PZT piezoelectric ring. The adapter system solves this with:
+The Aerogen Solo cup has a small rectangular connector housing (~1/2" x 1/2") on its bottom face containing two protruding pins (the PZT leads). The connector plug mates with this housing and connects via a flexible cable to the controller enclosure.
 
-1. **A cup-specific cradle** that holds the nebulizer cup in the correct position
-2. **Spring-loaded pogo pins** that press against the cup's PZT contact pads
-3. **A JST connector** for clean, repeatable connection to the controller
-
-The adapter is designed to snap into the controller enclosure (see `../enclosure/`) or work standalone on a bench.
+1. **A connector plug** that inserts into the cup's pin housing and makes spring-loaded contact
+2. **A flexible cable** (30-50cm stranded wire) connecting the plug to the controller
+3. **A JST-XH connector** for clean, repeatable connection at the controller end
 
 ---
 
-## Available Adapters
+## Available Designs
 
 | File | Cup Model | Status |
 |------|-----------|--------|
-| `aerogen_solo_adapter.scad` | Aerogen Solo / Solo with Pro-X | Ready (needs your measurements) |
+| `aerogen_connector_plug.scad` | Aerogen Solo / Solo with Pro-X | Ready (approximate dimensions — update with calipers) |
 | `universal_adapter.scad` | OMRON MicroAir, PARI eFlow, others | Parametric template (needs measurements) |
 
-Both files are **parametric OpenSCAD** designs. You measure your cup, enter the dimensions at the top of the file, and export an STL for printing.
+Both files are **parametric OpenSCAD** designs. Measure your cup, enter the dimensions, and export STL for printing.
 
 ---
 
 ## What You Need
 
-### Hardware (per adapter)
+### Hardware (per connector)
 
 | Qty | Item | Source | Cost |
 |-----|------|--------|------|
-| 2 | P75-B1 pogo pins (1.02mm dia, pointed tip) | Amazon/AliExpress "P75-B1 pogo pin" | ~$3/50-pack |
+| 2 | P75-B1 pogo pin sockets (receptacles) | Amazon/AliExpress "P75-B1 pogo pin" | ~$3/50-pack |
 | 1 | JST-XH 2-pin connector + header pair | Amazon/DigiKey | ~$0.50 |
-| 2 | Short lengths of stranded wire (24-28 AWG) | Any | ~$0 |
-| 1 | 3D printed adapter body | Your printer or JLCPCB 3D printing | ~$1-3 |
-| 2 | Small magnets 6x2mm (optional, for retention) | Amazon "6x2mm neodymium" | ~$2/20-pack |
+| 1 | Flexible stranded wire, 30-50cm (24-28 AWG, 2 conductors) | Any | ~$0 |
+| 1 | 3D printed connector plug | Your printer or JLCPCB 3D printing | ~$1-3 |
+| 1 | Small zip tie (for strain relief) | Any | ~$0 |
 
 ### Tools
 
-- 3D printer (PLA or PETG) or order from JLCPCB/Shapeways
-- Soldering iron (to solder wires to pogo pins)
-- Calipers or ruler (to measure your cup)
-- Small Phillips screwdriver (optional, if using set screws)
+- 3D printer (PETG or SLA resin) or order from JLCPCB/Shapeways
+- Soldering iron (to solder wires to pogo pin sockets)
+- Calipers (to verify cup connector dimensions)
+- JST crimp tool or solder
 
 ---
 
-## Measurement Guide
+## Measurement Guide — Aerogen Solo
 
-Before printing an adapter, you need to measure your specific nebulizer cup. Every measurement should be taken with calipers if possible. If you only have a ruler, add 0.5mm tolerance to cup dimensions.
-
-### Aerogen Solo Measurements
-
-Measure the following on your Aerogen Solo cup and enter them into `aerogen_solo_adapter.scad`:
+The connector housing on the bottom of the Aerogen Solo cup looks like this:
 
 ```
-        TOP VIEW (looking down at the cup)
-        ===================================
+    BOTTOM VIEW (looking up at the cup base)
+    ==========================================
 
-              +-----------+
-            /               \
-           /                 \
-          |                   |
-          |     O       O     |    <-- contact pads (on bottom face)
-          |   (pad1)  (pad2)  |
-          |                   |
-           \                 /
-            \               /
-              +-----------+
+         +------------------+
+         |                  |
+         |    o        o    |   <-- two protruding pins
+         |  (pin 1)  (pin 2)|
+         |                  |
+         +------------------+
+              ~1/2" wide
 
-        SIDE VIEW
-        ===================================
+    SIDE VIEW (cross-section through connector)
+    ==========================================
 
-          |<-- cup_od -->|
-          +----+   +----+
-          |    |   |    |      ^
-          |    |   |    |      | cup_height
-          |    |   |    |      |
-          |    +---+    |      v   <-- bottom face with contact pads
-          +---+     +---+
-              |     |          ^
-              | lip |          | lip_height (if any)
-              +-----+         v
+         Cup body
+        +---------+
+        |         |
+        | housing |       ^
+        |  +---+  |       | housing_height
+        |  | o |  |       |  (pin recess depth)
+        |  +---+  |       v
+        +----+----+
+             |  pin protrusion
+             v
 ```
 
-#### Required Measurements
+### Critical Measurements (use calipers)
 
-| Parameter | What to Measure | How |
-|-----------|----------------|-----|
-| `cup_outer_diameter` | Widest outer diameter of the cup body | Calipers around the cup at its widest point |
-| `cup_height` | Total height from bottom face to top rim | Stand cup on a flat surface, measure to top |
-| `contact_spacing` | Center-to-center distance between the two contact pads | Calipers or ruler between pad centers |
-| `contact_diameter` | Diameter of each contact pad | Calipers across one pad |
-| `contact_inset` | Distance from cup bottom face to contact pad surface | Is the pad flush? Recessed? If recessed, how deep? |
-| `cup_lip_diameter` | If the cup has a narrower lip/rim on the bottom | Measure the lip diameter |
-| `cup_lip_height` | Height of any bottom lip/step | Measure the step height |
+| Parameter | What to Measure | Estimated Value |
+|-----------|----------------|-----------------|
+| `housing_width` | Width of the rectangular connector housing | ~12.7mm (1/2") |
+| `housing_depth` | Depth of the rectangular connector housing | ~12.7mm (1/2") |
+| `pin_spacing` | Center-to-center distance between the two pins | ~3.175mm (1/8") |
+| `pin_diameter` | Diameter of each pin | ~1.0mm |
+| `pin_length` | How far pins protrude from the housing floor | ~4.0mm |
+| `housing_height` | Depth of the housing recess | ~6.0mm |
 
-#### Optional Measurements
-
-| Parameter | What to Measure | Default |
-|-----------|----------------|---------|
-| `cup_taper_angle` | If the cup body tapers (not perfectly cylindrical) | 0 (cylindrical) |
-| `flat_width` | If the cup has a flat section (D-shaped) for alignment | 0 (round) |
-| `contact_offset_x` | Horizontal offset of contact pair center from cup center | 0 (centered) |
-| `contact_offset_y` | Vertical offset of contact pair center from cup center | 0 (centered) |
-
-### Other Cup Brands
-
-For OMRON MicroAir, PARI eFlow, or other cups, you need the same measurements above plus:
-
-| Parameter | What to Measure | Notes |
-|-----------|----------------|-------|
-| `contact_type` | Shape of the electrical contacts | "circular_pad", "ring", "pin", "strip" |
-| `contact_width` | Width of strip/ring contacts (if not circular) | Only for non-circular contacts |
-| `contact_ring_id` | Inner diameter of ring contact (if ring type) | Only for ring contacts |
-| `contact_ring_od` | Outer diameter of ring contact (if ring type) | Only for ring contacts |
-
-Use `universal_adapter.scad` for non-Aerogen cups. It supports all contact types.
+**The most critical measurement is `pin_spacing`.** If this is off by more than 0.2mm, the pogo sockets won't align with the pins. Measure this first and most carefully.
 
 ---
 
 ## Assembly
 
-### Step 1: Print the Adapter
+### Step 1: Print the Connector Plug
 
-1. Open the `.scad` file in [OpenSCAD](https://openscad.org/) (free)
-2. Enter your measurements in the parameters section at the top
+1. Open `aerogen_connector_plug.scad` in [OpenSCAD](https://openscad.org/) (free)
+2. Update measurements with your caliper readings
 3. Press F5 to preview, F6 to render
 4. Export STL: File > Export > Export as STL
-5. Print with these settings:
-   - **Material:** PETG recommended (more chemical resistant than PLA). PLA works for testing.
-   - **Layer height:** 0.2mm
-   - **Infill:** 30-50%
-   - **Supports:** Yes, for the pogo pin channels
-   - **Orientation:** Print with the cup opening facing up
+5. Print settings:
+   - **Material:** SLA resin (best precision) or PETG
+   - **Layer height:** 0.12-0.2mm (finer = better socket channel fit)
+   - **Infill:** 50%+
+   - **Supports:** Yes, for socket channels
 
-### Step 2: Install Pogo Pins
+### Step 2: Install Pogo Sockets
 
-1. Insert a P75-B1 pogo pin into each channel from the bottom of the adapter
-2. The pin tip should protrude ~1mm above the cup contact surface when uncompressed
-3. Solder a 24-28 AWG stranded wire to each pogo pin's solder cup (the bottom end)
-4. Optionally apply a tiny drop of CA (super glue) to secure the pin body in the channel — don't get glue on the spring tip
-5. Route wires through the cable channel
+1. Insert a P75-B1 pogo socket (receptacle end up) into each channel from the bottom of the plug
+2. The open bore of each socket should face the insertion face (toward the cup pins)
+3. Optionally apply a tiny drop of CA glue to secure the socket barrel — avoid getting glue on the spring mechanism
+4. Solder a 24-28 AWG stranded wire to each socket's solder cup
 
-### Step 3: Connect JST Plug
+### Step 3: Route Cable
 
-1. Crimp or solder the two wires to a JST-XH 2-pin plug
-2. The matching JST-XH 2-pin header goes on your controller PCB or breadboard
-3. **No polarity requirement** — the PZT is an AC device, either wire to either pin
+1. Route both wires through the cable channel to the cable exit
+2. Thread the cable through the controller enclosure's cable gland **before** terminating
+3. Crimp or solder wires to a JST-XH 2-pin plug
+4. Secure cable with a zip tie in the strain relief slot
 
-### Step 4: Test Fit
+**Cable tips:**
+- Use flexible silicone-insulated wire (survives repeated flexing)
+- Keep cable 30-50cm (shorter = less noise pickup at 100+ kHz)
+- Twist the two wires together to reduce EMI
+- **No polarity requirement** — the PZT is an AC device
 
-1. Place your nebulizer cup into the adapter cradle
-2. The cup should seat firmly with the contacts aligned over the pogo pins
-3. Press gently — you should feel the pogo pin springs compress
-4. Measure continuity with a multimeter from the JST plug pins to the cup contacts
-5. Resistance should be < 1 ohm through each pogo pin
+### Step 4: Test
 
----
-
-## Design Philosophy
-
-### Why Pogo Pins?
-
-| Method | Pros | Cons |
-|--------|------|------|
-| Alligator clips | Cheap, easy | Slip off, scratch contacts, unreliable |
-| Soldered wires | Permanent connection | Can't swap cups, damages contacts |
-| Flat spring contacts | Simple | Hard to align, inconsistent pressure |
-| **Pogo pins** | **Self-aligning, consistent pressure, thousands of cycles** | **Need a printed holder** |
-
-The P75-B1 pogo pin is rated for 100,000+ cycles. At 6 treatments/day, that's 45+ years of use. The spring provides consistent contact pressure (~75g per pin) regardless of how firmly you seat the cup.
-
-### Why Separate Adapter + Enclosure?
-
-- **Swap adapters** when you change cup brands (Aerogen today, OMRON tomorrow)
-- **Replace adapter** without replacing the controller if the pogo pins wear out
-- **Iterate quickly** on adapter fit without reprinting the whole enclosure
-- **Dovetail mount** connects adapter to enclosure with a simple slide-and-click
+1. Press the connector plug onto the Aerogen Solo cup's pins
+2. You should feel slight resistance as the pins engage the pogo sockets
+3. Measure continuity: < 1 ohm from each JST pin to the corresponding cup pin
+4. Tug gently on the cable — the strain relief should hold
 
 ---
 
@@ -189,8 +141,38 @@ The P75-B1 pogo pin is rated for 100,000+ cycles. At 6 treatments/day, that's 45
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| No continuity through pogo pin | Pin not making contact, or solder joint broke | Re-seat pin, re-solder wire |
-| Cup doesn't sit flat in cradle | Measurements off, or print tolerance | Sand the cradle bore slightly, or adjust dimensions +0.3mm |
-| Cup falls out of adapter | Cradle too loose | Decrease `cup_outer_diameter` by 0.2-0.5mm in the SCAD file, or add retention magnets |
-| Intermittent contact during nebulization | Vibration loosening the cup | Add retention magnets or increase pogo pin spring preload by raising `pogo_preload` |
-| Pogo pin stuck (doesn't spring back) | Medication residue in pin | Clean with isopropyl alcohol. Replace pin if spring is damaged. |
+| Plug won't fit in housing | Plug too wide / deep | Increase `plug_clearance` by 0.1mm, reprint |
+| Plug too loose in housing | Too much clearance | Decrease `plug_clearance` by 0.1mm |
+| Pins don't align with sockets | `pin_spacing` measurement off | Re-measure with calipers, update, reprint |
+| No continuity through socket | Solder joint broke or socket not seated | Re-solder wire, re-seat socket |
+| Intermittent contact | Socket spring worn or medication residue | Clean with isopropyl alcohol, replace socket |
+| Cable breaks at plug | Repeated flexing without strain relief | Secure cable with zip tie, use stranded wire |
+
+---
+
+## Design Notes
+
+### Why Pogo Sockets (not clips or bare wire)?
+
+The Aerogen Solo cup has a 28-day life, meaning regular cup changes. The connector plug needs to handle hundreds of connect/disconnect cycles reliably. Pogo pin sockets provide:
+
+- **Self-centering** — spring mechanism guides the cup pin into alignment
+- **Consistent contact force** — ~75g per pin regardless of insertion depth
+- **100,000+ cycle rating** — effectively infinite for this application
+- **Low contact resistance** — gold-plated tips, < 50 milliohm
+
+### Why a Plug (not a Cradle)?
+
+The previous adapter design used a cradle that the cup sat in. The plug design is better because:
+
+- **Matches the actual connector** — the cup has pins in a housing, so we make a plug for that housing
+- **Smaller and lighter** — just a small block on the end of a cable
+- **More flexible positioning** — the cable lets you position the cup anywhere relative to the controller
+- **Easier to print** — no large cradle to support during printing
+
+### Cable Length
+
+Keep the cable between 30-50cm. At the operating frequency of 100+ kHz:
+- Longer cables act as antennas, picking up noise
+- Cable capacitance can affect the output waveform
+- The LC output circuit is tuned for a specific load — long cables add parasitic inductance

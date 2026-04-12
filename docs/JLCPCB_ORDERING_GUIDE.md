@@ -222,25 +222,6 @@ JLCPCB also offers 3D printing. You can order the cup adapter and enclosure at t
 
 ---
 
-## Comparison: All Three Build Tiers
-
-| | Breadboard (Full) | Simplified (Boost Module) | **Turnkey (JLCPCB)** |
-|---|---|---|---|
-| **Parts cost** | ~$38 | ~$20 | ~$15-25/board |
-| **Component count (you handle)** | ~40 parts | ~25 parts | **~5 plug-in items** |
-| **Soldering required** | Lots (or breadboard) | Moderate (or breadboard) | **2 joints (pogo pins only)** |
-| **Total cost (first build)** | ~$73 | ~$55 | **~$50-60** |
-| **Cost for additional units** | ~$38 each | ~$20 each | **~$15-25 each** |
-| **Build time** | 4-8 hours | 2-4 hours | **~30 minutes** (after delivery) |
-| **Reliability** | Low (breadboard) | Low-Medium | **High (factory-soldered)** |
-| **Durability** | Needs enclosure work | Needs enclosure work | **Integrated enclosure** |
-| **Skill required** | Electronics knowledge | Basic electronics | **Plug connectors, flash firmware** |
-| **BOM file** | `BOM.csv` | `BOM_SIMPLIFIED.csv` | **`BOM_TURNKEY.csv`** |
-
-**Recommendation for daily nursery use: the Turnkey build.** Factory-soldered connections don't loosen. The 3D-printed enclosure and adapter dock provide a clean, durable package. And at ~$15-25 per unit after the first build, you can easily make spares.
-
----
-
 ## Ordering Checklist
 
 - [ ] Export Gerber files from PCB design (ZIP format)
@@ -269,9 +250,6 @@ A: For passive components (resistors, caps), JLCPCB will suggest alternatives wi
 
 **Q: Can I order just 1 board?**
 A: PCB minimum is 5 boards (but they cost ~$0.50 each). Assembly minimum is typically 2 boards. The marginal cost of assembling all 5 is small — do it and keep spares.
-
-**Q: Do I need the original BOM (full discrete) at all?**
-A: No. The full discrete BOM exists for educational purposes and for anyone who wants to understand every component in the circuit. For practical daily use, the Turnkey build is superior in every way — cheaper, more reliable, faster to build, and more durable.
 
 **Q: Can I use PCBWay or OSH Park instead of JLCPCB?**
 A: Yes. Any PCB fabricator that offers SMT assembly will work. JLCPCB tends to be the cheapest for small quantities. PCBWay is comparable. OSH Park doesn't offer assembly but makes excellent bare PCBs if you want to solder yourself.
