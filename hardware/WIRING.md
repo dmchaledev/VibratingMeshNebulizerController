@@ -50,11 +50,17 @@ Pin-by-pin wiring guide for the AN2265-based vibrating mesh nebulizer controller
 | 17 | RC6/TX | Output | UART TX (debug) | MCP2221 RX (optional) |
 | 18 | RC7/RX | Input | UART RX (debug) | MCP2221 TX (optional) |
 | 19 | VSS | Power | Ground | Ground rail |
-| 20 | VDD | Power | +4.5V supply | Power rail (+4.5V) |
+| 20 | VDD | Power | +3.0-4.2V supply | LiPo + rail (directly from TP4056 BAT+) |
 | 21 | RB0/INT | Input | Start/stop button | Tactile switch to GND + 10K pull-up to VDD |
 | 22-26 | RB1-RB5 | — | Unused | Leave unconnected |
 | 27 | RB6/ICSPCLK | Prog | Programming clock | Programmer PGC |
 | 28 | RB7/ICSPDAT | Prog | Programming data | Programmer PGD |
+
+Note on pin 14 (RC3): remains NCO1 output driving Q4.
+Note on pins 15-16 (RC4, RC5): v3.1 reassigns these to the LCD/OLED
+I2C bus — RC4 = SDA, RC5 = SCL. They run as open-drain (driven low
+or released high) and are pulled up by the 4.7 kΩ resistors on the
+PCF8574 backpack. See the LCD section below.
 
 ---
 
@@ -149,27 +155,85 @@ The MCP2221 appears as a USB serial port on your computer. Use any terminal prog
 
 ---
 
-## Power Supply Connections
+## Power Supply (v3.1 — LiPo + TP4056)
 
-### Option A: Bench Supply (Recommended for Prototyping)
+v3.1 drops the 3x AAA / USB dual-path in favour of a rechargeable
+1S LiPo pouch cell charged through a TP4056/DW01A module. USB-C on
+the TP4056 module is the user-facing charging port; the old
+PCB-mounted USB-C receptacle is removed.
+
 ```
-  Bench Supply (+) ──── F1 (1A fuse) ──── VDD Rail
-  Bench Supply (-) ──── GND Rail
-  Set: 4.5V, current limit 500mA
+  USB-C (5V in)                                       VBOOST (~12V)
+       │                                                    ▲
+       ▼                                                    │
+  ┌─────────┐      ┌─────────┐      ┌─────────┐     ┌──────────┐
+  │ TP4056  │ BAT+ │  LiPo   │ +    │  PCB    │ PWR │  MT3608  │
+  │ charger │──────│ 1S 1S   │──────│ BAT IN  │─────│  boost   │
+  │ + DW01A │ BAT- │ ~2000   │ -    │ (JST-2) │     │  module  │
+  │ protect │──────│  mAh    │──────│         │     └──────────┘
+  └─────────┘      └─────────┘      └─────────┘           │
+                                           │               ▼
+                                        VDD=Vbat       (output stage)
+                                   (3.0-4.2V to MCU)
 ```
 
-### Option B: 3x AAA Batteries
+Key points:
+
+- **MCU VDD tracks the battery voltage** (3.0 V to 4.2 V). The PIC16F1713
+  is rated 1.8-5.5 V so this is well within spec.
+- **Battery measurement needs no external parts.** The firmware enables
+  the Fixed Voltage Reference at 2.048 V and reads it via ADC channel 31.
+  Because the ADC reference is VDD, the ratio gives VDD directly:
+  `Vbat_mV = 2048 * 1023 / adc_reading`. See `peripherals.c::battery_read_mv()`.
+- **TP4056 protects the cell** against over-charge (4.2 V cutoff), over-
+  discharge (2.5 V cutoff) and over-current / short. The firmware adds a
+  second software cutoff at 3.1 V so the device warns and shuts down
+  before the hardware protection trips and makes the pack look "dead".
+- **Do not reverse the LiPo polarity.** The TP4056 does not have reverse
+  protection on the BAT pads. Use a keyed JST-PH 2-pin connector.
+- **USB and LiPo at the same time is fine** — when USB is connected,
+  the TP4056 charges the cell and simultaneously powers the load.
+
+### Optional: Bench Supply (Prototyping Only)
+
+If you want to test the PCB without a LiPo, you can substitute a
+bench supply directly on the BAT IN header:
+
 ```
-  Battery (+) ──── F1 (1A fuse) ──── VDD Rail
-  Battery (-) ──── GND Rail
-  Nominal: 4.5V (3 x 1.5V)
+  Bench (+) ──── BAT IN + (JST-2)
+  Bench (-) ──── BAT IN -
+  Set: 3.7 V nominal, current limit 800 mA
 ```
 
-### Option C: USB 5V
+Disconnect the TP4056 module when doing this — feeding the BAT pads
+while USB is live can damage the charger IC.
+
+---
+
+## LCD / OLED Wiring (v3.1)
+
+A 16x2 character display (LCD or OLED, see `config.h::LCD_IS_OLED`)
+mounts on the lid of the enclosure and connects to the PCB via a
+4-wire ribbon:
+
 ```
-  USB 5V ──── F1 (1A fuse) ──── VDD Rail
-  USB GND ──── GND Rail
+  LCD Backpack (PCF8574)        PCB LCD Header (1x4)
+  ────────────────────          ─────────────────────
+  VCC  ────────────── VDD   (+3.3-4.2 V, same as MCU VDD)
+  GND  ────────────── GND
+  SDA  ────────────── RC4   (pin 15 — bit-bang I2C SDA)
+  SCL  ────────────── RC5   (pin 16 — bit-bang I2C SCL)
 ```
+
+- The PCF8574 backpack has 4.7 kΩ pull-ups to VCC on SDA/SCL, so no
+  external pull-up resistors are needed.
+- Bus speed is ~100 kHz, driven in software at 10 ms main-loop
+  cadence. Refresh is ~2 Hz.
+- The backpack I2C address is auto-detected between 0x27 (NXP
+  PCF8574) and 0x3F (TI PCF8574A) at boot.
+- Most 1602 character OLEDs (Winstar WEH001602, Newhaven NHD-0216AW,
+  Matrix Orbital MOP-AO162) are pin-compatible with the same
+  backpack and drop in with `LCD_IS_OLED = 1` in `config.h`.
 
 ---
 

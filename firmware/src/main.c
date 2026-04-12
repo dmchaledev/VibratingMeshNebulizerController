@@ -30,6 +30,7 @@
 #include "config.h"
 #include "peripherals.h"
 #include "sweep.h"
+#include "lcd.h"
 
 /* ========================================================================
  * State machine
@@ -60,12 +61,46 @@ static uint8_t          current_dac;         /* Current boost DAC level */
 static uint16_t         cached_freq;         /* Loaded from HEF on startup */
 #endif
 
+#if BATTERY_ENABLED
+static uint16_t         batt_mv;             /* Most recent battery reading (mV) */
+static uint8_t          batt_pct;            /* Most recent SOC estimate (%) */
+static uint16_t         batt_sample_cooldown_ms; /* Countdown until next sample */
+static uint8_t          batt_critical_latched;   /* 1 once battery has dropped below CRIT */
+#endif
+
+#if LCD_ENABLED
+static uint16_t         lcd_refresh_cooldown_ms; /* Countdown until next refresh */
+static uint8_t          lcd_present;             /* 1 if LCD was detected at boot */
+#endif
+
+/* Return a short label for the current state, suitable for the LCD. */
+#if LCD_ENABLED
+static const char *state_label(state_t s)
+{
+    switch (s) {
+        case STATE_IDLE:       return "READY";
+#if BOOST_MODE == BOOST_MODE_DISCRETE
+        case STATE_BOOST_RAMP: return "RAMP";
+#endif
+        case STATE_SWEEP:      return "SWEEP";
+        case STATE_RUNNING:    return "RUN";
+        case STATE_STOPPING:   return "STOP";
+        case STATE_ERROR:      return "ERR";
+        default:               return "?";
+    }
+}
+#endif
+
 /*
  * Timer1 overflow period: ~131 ms (65536 * 8 / 4 MHz)
  * Ticks per second: ~7.63
  */
 #define TICKS_PER_SEC       8   /* approximate: 1000/131 ≈ 7.63, round up */
 #define MS_TO_TICKS(ms)     ((uint16_t)((ms) / 131 + 1))
+#define LOOP_PERIOD_MS      10  /* Main loop cadence — 1 iteration = 10 ms */
+
+/* Compute the elapsed treatment time in whole seconds from tick count. */
+#define TICKS_TO_SEC(t)     ((uint16_t)((uint32_t)(t) / TICKS_PER_SEC))
 
 /* ========================================================================
  * Button debounce
@@ -153,6 +188,71 @@ static void update_leds(void)
 }
 
 /* ========================================================================
+ * Battery sampling — call each loop iteration. Updates batt_mv/batt_pct
+ * on a BATTERY_SAMPLE_MS cadence and latches a critical flag when the
+ * cell sags below BATTERY_CRIT_MV so we can stop cleanly.
+ * ======================================================================== */
+#if BATTERY_ENABLED
+static void battery_sample_step(void)
+{
+    if (batt_sample_cooldown_ms > LOOP_PERIOD_MS) {
+        batt_sample_cooldown_ms -= LOOP_PERIOD_MS;
+        return;
+    }
+    batt_sample_cooldown_ms = BATTERY_SAMPLE_MS;
+
+    uint16_t mv = battery_read_mv();
+    if (mv == 0) return;             /* Bad reading — keep previous value */
+
+    batt_mv  = mv;
+    batt_pct = battery_percent(mv);
+
+    if (mv < BATTERY_CRIT_MV)
+        batt_critical_latched = 1;
+}
+#endif
+
+/* ========================================================================
+ * LCD refresh — cheaply rewrites the two-line display each LCD_UPDATE_MS.
+ * Line 1 shows the state + frequency, line 2 shows battery and either
+ * elapsed treatment time (while running) or the cell voltage (otherwise).
+ * ======================================================================== */
+#if LCD_ENABLED
+static void lcd_refresh_step(void)
+{
+    if (!lcd_present) return;
+
+    if (lcd_refresh_cooldown_ms > LOOP_PERIOD_MS) {
+        lcd_refresh_cooldown_ms -= LOOP_PERIOD_MS;
+        return;
+    }
+    lcd_refresh_cooldown_ms = LCD_UPDATE_MS;
+
+    /* Pick the right frequency value to show. While running we know the
+     * locked resonance; in any other state we show the last cached freq
+     * (from HEF) if we have one, otherwise zero. */
+    uint32_t freq_hz = 0;
+#if FREQ_CACHE_ENABLED
+    uint16_t inc_for_display = (state == STATE_RUNNING) ? resonance.peak_inc : cached_freq;
+#else
+    uint16_t inc_for_display = (state == STATE_RUNNING) ? resonance.peak_inc : 0;
+#endif
+    if (inc_for_display != 0)
+        freq_hz = NCO_INC_TO_HZ(inc_for_display);
+
+    lcd_show_status(state_label(state), freq_hz);
+
+    /* Line 2: battery + elapsed time (if running) or voltage (otherwise). */
+#if BATTERY_ENABLED
+    uint16_t elapsed = (state == STATE_RUNNING) ? TICKS_TO_SEC(treatment_ticks) : 0xFFFF;
+    lcd_show_battery(batt_pct, batt_mv, elapsed);
+#else
+    lcd_show_battery(0, 0, 0xFFFF);
+#endif
+}
+#endif
+
+/* ========================================================================
  * Stop nebulization — safe shutdown
  * ======================================================================== */
 static void stop_nebulization(void)
@@ -226,13 +326,46 @@ void main(void)
     current_dac = 0;
 #endif
 
+#if BATTERY_ENABLED
+    /* Take a first battery reading before showing the splash so the LCD
+     * can display it immediately. */
+    batt_mv = battery_read_mv();
+    batt_pct = battery_percent(batt_mv);
+    batt_sample_cooldown_ms = BATTERY_SAMPLE_MS;
+    batt_critical_latched = 0;
+#endif
+
+#if LCD_ENABLED
+    /* Bring up the character LCD. This silently does nothing if no
+     * backpack ACKs on the bus (lcd_present stays 0). */
+    lcd_present = lcd_init();
+    if (lcd_present) {
+        lcd_show_message(" VMN Controller ",
+                         "    v3.1        ");
+    }
+    lcd_refresh_cooldown_ms = 1500;   /* Hold the splash ~1.5 s */
+#endif
+
     /* Startup indication: blink red LED once */
     led_red_on();
     delay_ms(500);
     led_red_off();
     delay_ms(250);
 
-    uart_send_string("\r\n=== VMN Controller v3.0 ===\r\n");
+    uart_send_string("\r\n=== VMN Controller v3.1 ===\r\n");
+#if BATTERY_ENABLED
+    uart_send_string("Battery: ");
+    uart_send_uint16(batt_mv);
+    uart_send_string(" mV (");
+    uart_send_uint16(batt_pct);
+    uart_send_string("%)\r\n");
+#endif
+#if LCD_ENABLED
+    if (lcd_present)
+        uart_send_string("LCD: detected\r\n");
+    else
+        uart_send_string("LCD: not found\r\n");
+#endif
 #if TREATMENT_MODE == TREATMENT_MODE_CONTINUOUS
     uart_send_string("Mode: CONTINUOUS (dry-cup auto-stop)\r\n");
 #else
@@ -250,6 +383,35 @@ void main(void)
     /* ---- Main loop ---- */
     while (1) {
 
+#if BATTERY_ENABLED
+        /* Sample the LiPo cell on a slow cadence */
+        battery_sample_step();
+
+        /* Auto-stop if the cell is critically low during a running
+         * treatment. This protects the LiPo from over-discharge in
+         * addition to the TP4056/DW01A hardware cutoff at ~2.5V. */
+        if (batt_critical_latched &&
+            (state == STATE_RUNNING || state == STATE_SWEEP
+#if BOOST_MODE == BOOST_MODE_DISCRETE
+             || state == STATE_BOOST_RAMP
+#endif
+            )) {
+            uart_send_string("BAT: critical, auto-stopping\r\n");
+            stop_nebulization();
+#if LCD_ENABLED
+            if (lcd_present) {
+                lcd_show_message("LOW BATTERY     ",
+                                 "Please recharge ");
+                lcd_refresh_cooldown_ms = 2000;
+            }
+#endif
+        }
+#endif
+
+#if LCD_ENABLED
+        lcd_refresh_step();
+#endif
+
         /* Check for button press in any state */
         if (button_debounced()) {
             if (state == STATE_RUNNING || state == STATE_SWEEP
@@ -262,6 +424,21 @@ void main(void)
                 delay_ms(500);  /* Debounce delay after stop */
                 continue;
             } else if (state == STATE_IDLE || state == STATE_ERROR) {
+#if BATTERY_ENABLED
+                /* Refuse to start if battery is critically low */
+                if (batt_critical_latched || batt_mv < BATTERY_CRIT_MV) {
+                    uart_send_string("BAT: too low, start inhibited\r\n");
+#if LCD_ENABLED
+                    if (lcd_present) {
+                        lcd_show_message("LOW BATTERY     ",
+                                         "Charge via USB-C");
+                        lcd_refresh_cooldown_ms = 2000;
+                    }
+#endif
+                    delay_ms(500);
+                    continue;
+                }
+#endif
                 /* Button in idle/error = start */
 #if BOOST_MODE == BOOST_MODE_DISCRETE
                 uart_send_string("START: beginning boost ramp\r\n");
@@ -413,6 +590,6 @@ void main(void)
         update_leds();
 
         /* Small delay to set main loop cadence (~10ms per iteration) */
-        delay_ms(10);
+        delay_ms(LOOP_PERIOD_MS);
     }
 }
