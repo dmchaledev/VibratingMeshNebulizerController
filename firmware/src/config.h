@@ -90,6 +90,19 @@
 #define BOOST_MODE_MODULE       1
 #define BOOST_MODE              BOOST_MODE_MODULE   /* Turnkey build uses pre-built boost module */
 
+/* Boost voltage feedback diagnostic (MODULE build only).
+ *
+ * At startup and on every failed frequency sweep, the firmware reads the
+ * AN3 boost-feedback pin through the PCB's R5/R8 voltage divider and
+ * compares it against this threshold. A reading below the threshold means
+ * the boost module is likely off, disconnected, or its trim pot is set too
+ * low — the display shows "ERR Vboost low / Check boost mod" rather than
+ * the generic "ERR no cup" for easier first-power-up diagnosis.
+ *
+ * With the PCB's nominal divider (~10:1) and a 3.7 V battery, a healthy
+ * 12 V boost produces ~300 ADC counts. Set to 0 to disable the check. */
+#define BOOST_VFDBK_MIN_ADC     50      /* Raw ADC counts; <50 = likely no boost */
+
 /* =========================================================================
  * RESONANCE DETECTION
  *
@@ -216,7 +229,7 @@
  *   Line 2: battery + elapsed  (e.g., "Bat 87%  14:32 ")
  * ========================================================================= */
 #define LCD_ENABLED             1       /* 1 = drive display, 0 = headless */
-#define LCD_IS_OLED             0       /* 0 = HD44780 LCD, 1 = character OLED */
+#define LCD_IS_OLED             1       /* 0 = HD44780 LCD, 1 = character OLED (Nimbus v3.1 default) */
 #define LCD_I2C_ADDR_7BIT       0x27    /* PCF8574 7-bit I2C address */
 #define LCD_I2C_ADDR_ALT_7BIT   0x3F    /* Alternate (some backpacks) */
 #define LCD_ROWS                2
