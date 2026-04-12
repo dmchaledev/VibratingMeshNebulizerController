@@ -1,0 +1,38 @@
+# Build artifacts
+*.o
+*.a
+*.hex
+*.elf
+*.map
+*.cof
+*.lst
+*.pre
+*.sym
+
+# MPLAB X IDE
+*.X/
+nbproject/
+dist/
+build/
+debug/
+release/
+
+# XC8 compiler
+*.p1
+*.d
+*.cmf
+*.hxl
+*.sdb
+*.obj
+
+# 3D printing exports
+*.stl
+*.gcode
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+*.swo
