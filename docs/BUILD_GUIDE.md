@@ -1,6 +1,6 @@
-# Build Guide — Turnkey (JLCPCB Pre-Assembled)
+# Nimbus Build Guide — Turnkey (JLCPCB Pre-Assembled)
 
-Complete guide to assembling the Aerogen Solo controller from a JLCPCB pre-assembled PCB.
+Complete guide to assembling the Nimbus Nebulizer Controller from a JLCPCB pre-assembled PCB.
 
 **Read [DISCLAIMER.md](../DISCLAIMER.md) before starting.**
 
@@ -49,8 +49,8 @@ command set driven by a PCF8574 I2C backpack. Three popular choices:
 
 | Option | Part | Cost | Notes |
 |--------|------|------|-------|
-| **A (default)** | Generic 1602 LCD + "LCD1602 IIC" backpack | ~$3-5 | `LCD_IS_OLED = 0`. Works in the dark thanks to its backlight; unreadable in bright sunlight. |
-| **B** | Winstar WEH001602A + PCF8574 backpack | ~$22-28 | `LCD_IS_OLED = 1`. Character OLED with WS0010 controller. Direct pin-compatible with the LCD. |
+| **A** | Generic 1602 LCD + "LCD1602 IIC" backpack | ~$3-5 | `LCD_IS_OLED = 0`. Works in the dark thanks to its backlight; contrast may be dim below ~3.7 V battery. |
+| **B (default)** | Winstar WEH001602A + PCF8574 backpack | ~$22-28 | `LCD_IS_OLED = 1`. Character OLED with WS0010 controller. Rated 3.0-5.5 V — stays crisp at any battery level. |
 | **C** | Newhaven NHD-0216AW-IB3 | ~$25-32 | `LCD_IS_OLED = 1`. Has I2C built in — no external backpack needed. |
 
 The firmware driver is the same for all three; only the `LCD_IS_OLED`
@@ -159,10 +159,10 @@ See [hardware/adapters/README.md](../hardware/adapters/README.md) for detailed i
 1. **Do NOT connect a nebulizer cup yet**
 2. **Charge the cell** — plug USB-C into the TP4056 aperture until
    the red charge LED on the module turns off (~1-2 hours)
-3. **Unplug USB**. The LCD should light up and show the splash:
+3. **Unplug USB**. The display should show the splash:
    ```
-    VMN Controller
-        v3.1
+   Nimbus Nebulizer
+    Controller v3.1
    ```
    After ~1.5 s it switches to the status line:
    ```

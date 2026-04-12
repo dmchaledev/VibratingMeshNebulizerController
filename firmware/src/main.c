@@ -1,5 +1,5 @@
 /*
- * main.c — Vibrating Mesh Nebulizer Controller
+ * main.c — Nimbus Nebulizer Controller
  *
  * Firmware for PIC16F1713 to drive a PZT-based vibrating mesh nebulizer
  * (e.g., Aerogen Solo) via frequency sweep and resonance lock.
@@ -66,11 +66,16 @@ static uint16_t         batt_mv;             /* Most recent battery reading (mV)
 static uint8_t          batt_pct;            /* Most recent SOC estimate (%) */
 static uint16_t         batt_sample_cooldown_ms; /* Countdown until next sample */
 static uint8_t          batt_critical_latched;   /* 1 once battery has dropped below CRIT */
+static uint8_t          batt_crit_consec;        /* Consecutive sub-CRIT samples (need ≥2) */
 #endif
 
 #if LCD_ENABLED
 static uint16_t         lcd_refresh_cooldown_ms; /* Countdown until next refresh */
 static uint8_t          lcd_present;             /* 1 if LCD was detected at boot */
+#endif
+
+#if BOOST_MODE == BOOST_MODE_MODULE
+static uint8_t          error_boost_low;     /* 1 if last sweep failed due to low Vboost */
 #endif
 
 /* Return a short label for the current state, suitable for the LCD. */
@@ -92,15 +97,22 @@ static const char *state_label(state_t s)
 #endif
 
 /*
- * Timer1 overflow period: ~131 ms (65536 * 8 / 4 MHz)
- * Ticks per second: ~7.63
+ * Timer1 overflow period: 131.072 ms exactly (65536 counts × 8 prescaler / 4 MHz).
+ * True ticks per second: 1000 / 131.072 ≈ 7.630.
+ *
+ * The previous TICKS_PER_SEC=8 approximation made the elapsed-time display
+ * ~4.8% fast — a 30-min treatment showed 30:00 on the LCD when only ~28:34
+ * had actually passed, and TIMED mode ended ~86 s early.
+ *
+ * Use 131 ms/tick for all integer arithmetic (rounds down by 0.054 %,
+ * well inside the 500 ms LCD refresh granularity):
+ *   elapsed_sec  = ticks × 131 / 1000
+ *   ticks needed = time_sec × 1000 / 131
  */
-#define TICKS_PER_SEC       8   /* approximate: 1000/131 ≈ 7.63, round up */
-#define MS_TO_TICKS(ms)     ((uint16_t)((ms) / 131 + 1))
-#define LOOP_PERIOD_MS      10  /* Main loop cadence — 1 iteration = 10 ms */
-
-/* Compute the elapsed treatment time in whole seconds from tick count. */
-#define TICKS_TO_SEC(t)     ((uint16_t)((uint32_t)(t) / TICKS_PER_SEC))
+#define TIMER1_MS_PER_TICK  131UL       /* Nominal ms per Timer1 overflow */
+#define MS_TO_TICKS(ms)     ((uint16_t)((uint16_t)(ms) / TIMER1_MS_PER_TICK + 1))
+#define LOOP_PERIOD_MS      10          /* Main loop cadence — 1 iteration = 10 ms */
+#define TICKS_TO_SEC(t)     ((uint16_t)((uint32_t)(t) * TIMER1_MS_PER_TICK / 1000UL))
 
 /* ========================================================================
  * Button debounce
@@ -207,8 +219,16 @@ static void battery_sample_step(void)
     batt_mv  = mv;
     batt_pct = battery_percent(mv);
 
-    if (mv < BATTERY_CRIT_MV)
-        batt_critical_latched = 1;
+    /* Require two consecutive sub-CRIT readings before latching.
+     * A single sample can sag 100-200 mV under heavy load and recover
+     * immediately at idle — latching on a single glitch would stop a
+     * treatment on a cell that still has plenty of charge. */
+    if (mv < BATTERY_CRIT_MV) {
+        if (++batt_crit_consec >= 2)
+            batt_critical_latched = 1;
+    } else {
+        batt_crit_consec = 0;
+    }
 }
 #endif
 
@@ -228,6 +248,14 @@ static void lcd_refresh_step(void)
     }
     lcd_refresh_cooldown_ms = LCD_UPDATE_MS;
 
+#if BOOST_MODE == BOOST_MODE_MODULE
+    /* Dedicated Vboost error screen overrides the normal status display */
+    if (state == STATE_ERROR && error_boost_low) {
+        lcd_show_message("ERR Vboost low  ", "Check boost mod ");
+        return;
+    }
+#endif
+
     /* Pick the right frequency value to show. While running we know the
      * locked resonance; in any other state we show the last cached freq
      * (from HEF) if we have one, otherwise zero. */
@@ -246,9 +274,8 @@ static void lcd_refresh_step(void)
 #if BATTERY_ENABLED
     uint16_t elapsed = (state == STATE_RUNNING) ? TICKS_TO_SEC(treatment_ticks) : 0xFFFF;
     lcd_show_battery(batt_pct, batt_mv, elapsed);
-#else
-    lcd_show_battery(0, 0, 0xFFFF);
 #endif
+    /* No line-2 update when BATTERY_ENABLED=0 — avoids "Bat 0% 0.00V" */
 }
 #endif
 
@@ -311,7 +338,7 @@ void main(void)
     system_init();
 
     /* Calculate timer tick counts */
-    treatment_max_ticks = (uint16_t)((uint32_t)TREATMENT_TIME_SEC * TICKS_PER_SEC);
+    treatment_max_ticks = (uint16_t)((uint32_t)TREATMENT_TIME_SEC * 1000UL / TIMER1_MS_PER_TICK);
     recheck_max_ticks   = MS_TO_TICKS(RECHECK_INTERVAL_MS);
     dry_cup_max_ticks   = MS_TO_TICKS(DRY_CUP_CONFIRM_MS);
 
@@ -333,6 +360,7 @@ void main(void)
     batt_pct = battery_percent(batt_mv);
     batt_sample_cooldown_ms = BATTERY_SAMPLE_MS;
     batt_critical_latched = 0;
+    batt_crit_consec = 0;
 #endif
 
 #if LCD_ENABLED
@@ -340,8 +368,8 @@ void main(void)
      * backpack ACKs on the bus (lcd_present stays 0). */
     lcd_present = lcd_init();
     if (lcd_present) {
-        lcd_show_message(" VMN Controller ",
-                         "    v3.1        ");
+        lcd_show_message("Nimbus Nebulizer",
+                         " Controller v3.1");
     }
     lcd_refresh_cooldown_ms = 1500;   /* Hold the splash ~1.5 s */
 #endif
@@ -352,7 +380,7 @@ void main(void)
     led_red_off();
     delay_ms(250);
 
-    uart_send_string("\r\n=== VMN Controller v3.1 ===\r\n");
+    uart_send_string("\r\n=== Nimbus Nebulizer Controller v3.1 ===\r\n");
 #if BATTERY_ENABLED
     uart_send_string("Battery: ");
     uart_send_uint16(batt_mv);
@@ -362,9 +390,9 @@ void main(void)
 #endif
 #if LCD_ENABLED
     if (lcd_present)
-        uart_send_string("LCD: detected\r\n");
+        uart_send_string("Display: detected\r\n");
     else
-        uart_send_string("LCD: not found\r\n");
+        uart_send_string("Display: not found\r\n");
 #endif
 #if TREATMENT_MODE == TREATMENT_MODE_CONTINUOUS
     uart_send_string("Mode: CONTINUOUS (dry-cup auto-stop)\r\n");
@@ -448,6 +476,9 @@ void main(void)
 #else
                 /* No ramp needed — boost module is already at target voltage */
                 uart_send_string("START: beginning sweep\r\n");
+#if BOOST_MODE == BOOST_MODE_MODULE
+                error_boost_low = 0;
+#endif
                 state = STATE_SWEEP;
 #endif
             }
@@ -502,12 +533,30 @@ void main(void)
 
                 state = STATE_RUNNING;
             } else {
-                /* No resonance — error state */
-                uart_send_string("ERROR: no cup detected\r\n");
+                /* No resonance found — check boost voltage for a clearer error */
                 dac_set_value(0);
 #if BOOST_MODE == BOOST_MODE_DISCRETE
                 current_dac = 0;
 #endif
+
+#if BOOST_MODE == BOOST_MODE_MODULE && BOOST_VFDBK_MIN_ADC > 0
+                {
+                    uint16_t vfdbk = adc_read(ADC_CH_BOOST_VFDBK);
+                    uart_send_string("BOOST VFDBK ADC=");
+                    uart_send_uint16(vfdbk);
+                    uart_send_string("\r\n");
+                    if (vfdbk < BOOST_VFDBK_MIN_ADC) {
+                        error_boost_low = 1;
+                        uart_send_string("ERROR: Vboost too low — check module\r\n");
+                    } else {
+                        error_boost_low = 0;
+                        uart_send_string("ERROR: no cup detected\r\n");
+                    }
+                }
+#else
+                uart_send_string("ERROR: no cup detected\r\n");
+#endif
+
                 state = STATE_ERROR;
                 error_blink_count = 0;
             }

@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [3.1] — 2026-04-12
+## [3.1] — 2026-04-12 (updated 2026-04-12)
 
 Quality-of-life build for daily nursery use: rechargeable cell, USB-C
 charging, and a status display.
@@ -47,9 +47,32 @@ charging, and a status display.
   mounting, and a first power-up sequence that includes the splash
   and status screens
 
+### Changed (post-audit)
+- Device named **Nimbus Nebulizer Controller**. LCD splash, UART banner,
+  README title, and build guide updated. Filenames and branch unchanged.
+- `LCD_IS_OLED` now defaults to `1` (character OLED). Character OLEDs
+  operate down to 3.0 V, matching the full LiPo discharge range. The cheap
+  HD44780 LCD remains supported via `LCD_IS_OLED = 0`.
+
 ### Fixed
 - ICSP cutout Y-coordinate bug in `controller_enclosure.scad` that
   mixed X and Y values
+- **Elapsed-time drift** — `TICKS_PER_SEC=8` made the display 4.8% fast
+  (30 min session showed 30:00 at only 28:34 elapsed; TIMED mode ended
+  86 s early). Replaced with `TIMER1_MS_PER_TICK=131` integer arithmetic
+  for < 0.1% error.
+- **Boost voltage diagnostic** — in `BOOST_MODE_MODULE`, a failed
+  frequency sweep now reads the AN3 boost-feedback ADC. If the reading
+  is below `BOOST_VFDBK_MIN_ADC` (default 50 counts), the UART prints
+  `ERROR: Vboost too low — check module` and the display shows
+  `ERR Vboost low / Check boost mod` instead of the generic `ERR no cup`.
+- **Battery sag false-trip** — a single below-threshold battery sample
+  during a high-load draw could latch `batt_critical_latched` and abort
+  the treatment prematurely. Now requires two consecutive sub-`BATTERY_CRIT_MV`
+  readings before the flag latches.
+- **`BATTERY_ENABLED=0` display** — `lcd_show_battery(0, 0, 0xFFFF)` was
+  called unconditionally, showing "Bat 0% 0.00V" in headless builds. Line 2
+  is now left unchanged when battery monitoring is disabled.
 
 ## [3.0] — 2026-04-12
 

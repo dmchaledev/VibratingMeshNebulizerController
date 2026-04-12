@@ -1,4 +1,4 @@
-# Aerogen Solo DIY Controller — Breadboard Build
+# Nimbus Nebulizer Controller
 
 > **WARNING: THIS IS NOT AN FDA-APPROVED MEDICAL DEVICE.**
 > This project is a research workaround for educational and investigational purposes only.
@@ -27,11 +27,11 @@ and a status display.
   recharge. DW01A handles over-charge, over-discharge and short-circuit
   protection. The firmware adds a software cutoff at 3.1 V so it warns
   and stops cleanly before the hardware cutoff trips.
-- **16x2 character display on the lid** — shows state, resonant
+- **16x2 character OLED on the lid** — shows state, resonant
   frequency, elapsed treatment time, battery percent and voltage.
-  Drop-in compatible with a cheap HD44780 LCD (~$3) or a premium
-  character OLED (Winstar / Newhaven / Matrix Orbital, ~$25). Single
-  config flag `LCD_IS_OLED` switches the driver.
+  Default is a character OLED (Winstar / Newhaven / Matrix Orbital,
+  ~$25) which stays readable at any LiPo voltage (3.0–4.2 V). A
+  cheap HD44780 LCD (~$3) also works; set `LCD_IS_OLED = 0`.
 - **Split enclosure** — base and lid are now separate SCAD files
   sharing an `enclosure_config.scad`, so you can iterate on either
   without re-rendering the other.
@@ -135,7 +135,7 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 | Boost module (MT3608) | ~$1-2 |
 | 1S LiPo pouch cell (103450, 2000 mAh) | ~$8-12 |
 | TP4056 + DW01A Type-C charger | ~$0.50-2 |
-| 16x2 LCD + I2C backpack | ~$3-5 |
+| 16x2 character OLED (Winstar WEH001602A, default) | ~$22-28 |
 | 3D-printed connector + enclosure | ~$3-5 |
 | Pogo pins + JST cables + screws | ~$3-5 |
 | **Per-unit total (LCD)** | **~$30-45** |
