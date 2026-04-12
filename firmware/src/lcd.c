@@ -167,23 +167,39 @@ uint8_t lcd_init(void)
         }
     }
 
-    lcd_bl_state = LCD_BL_BIT;     /* Backlight on */
+    lcd_bl_state = LCD_BL_BIT;     /* Backlight on (ignored on OLED) */
 
     /* HD44780 power-on initialization sequence for 4-bit mode.
      * Per the datasheet we must wait >40ms after VDD, then issue
      * three "function set" nibbles in 8-bit mode before switching
-     * to 4-bit mode. */
+     * to 4-bit mode. Character OLED controllers (WS0010, US2066)
+     * accept the same sequence but benefit from a longer settle
+     * time and an explicit display-off before the final display-on. */
+#if LCD_IS_OLED
+    delay_ms(100);                                     /* OLED wants >100 ms */
+#else
     delay_ms(50);
+#endif
     lcd_write_nibble(0x03, 0);  delay_ms(5);
-    lcd_write_nibble(0x03, 0);  __delay_us(150);
-    lcd_write_nibble(0x03, 0);  __delay_us(150);
-    lcd_write_nibble(0x02, 0);  __delay_us(150);    /* 4-bit mode */
+    lcd_write_nibble(0x03, 0);  __delay_us(200);
+    lcd_write_nibble(0x03, 0);  __delay_us(200);
+    lcd_write_nibble(0x02, 0);  __delay_us(200);       /* 4-bit mode */
 
     lcd_cmd(0x28);              /* Function set: 4-bit, 2 lines, 5x8 font */
+#if LCD_IS_OLED
+    lcd_cmd(0x08);              /* Display OFF (required on US2066/WS0010) */
+    delay_ms(2);
+#endif
     lcd_cmd(0x0C);              /* Display ON, cursor OFF, blink OFF */
     lcd_cmd(0x06);              /* Entry mode: increment, no shift */
     lcd_cmd(0x01);              /* Clear display */
     delay_ms(3);
+#if LCD_IS_OLED
+    /* OLED controllers take a bit longer to warm up the first line
+     * of pixels. A brief pause here avoids the occasional garbled
+     * first frame on cold-start. */
+    delay_ms(5);
+#endif
     return 1;
 }
 

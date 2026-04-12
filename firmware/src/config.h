@@ -184,19 +184,39 @@
 #define ADC_CH_FVR              31      /* PIC16F1713 ADC internal FVR channel */
 
 /* =========================================================================
- * CHARACTER LCD (1602 I2C)
+ * CHARACTER DISPLAY (1602 I2C) — LCD or OLED
  *
- * A standard 16x2 HD44780 character LCD with a PCF8574 I2C backpack.
- * Wired to two GPIO pins on PORTC using software (bit-bang) I2C at ~100 kHz.
+ * This firmware supports two kinds of 16x2 character displays, both
+ * driven over the same bit-bang I2C bus through a PCF8574 backpack:
  *
- * The backpack typically uses address 0x27 (NXP PCF8574) or 0x3F (TI variant).
- * If your display is blank, try the alternate address.
+ *   1. Classic HD44780 LCD (~$3-5).
+ *      Examples: any generic 1602 LCD + "LCD1602 IIC" backpack.
+ *      Set LCD_IS_OLED = 0.
+ *
+ *   2. Character OLED (~$20-30). Higher contrast, ~180° viewing angle,
+ *      self-emissive (no backlight), nicer aesthetic.
+ *      Examples: Winstar WEH001602 (WS0010 controller),
+ *                Newhaven NHD-0216AW (US2066 controller),
+ *                Matrix Orbital MOP-AO162 (US2066).
+ *      Set LCD_IS_OLED = 1. Requires the extended init sequence below.
+ *
+ * BOTH options speak the standard HD44780 4-bit command set for writes,
+ * so the same lcd_write_char / lcd_set_cursor / etc. code drives either.
+ * The only difference is the power-on initialization.
+ *
+ * If your character OLED is a "smart" serial module with a proprietary
+ * protocol (Matrix Orbital CFA series, etc.), you'll need a different
+ * driver entirely — it won't work with this code.
+ *
+ * The backpack usually uses address 0x27 (NXP) or 0x3F (TI variant).
+ * If your display stays blank, the init sequence auto-probes both.
  *
  * Display layout:
  *   Line 1: state + frequency  (e.g., "RUN 128.5kHz    ")
- *   Line 2: battery + elapsed  (e.g., "Bat 87% 3.95V  ")
+ *   Line 2: battery + elapsed  (e.g., "Bat 87%  14:32 ")
  * ========================================================================= */
-#define LCD_ENABLED             1       /* 1 = drive LCD, 0 = no LCD */
+#define LCD_ENABLED             1       /* 1 = drive display, 0 = headless */
+#define LCD_IS_OLED             0       /* 0 = HD44780 LCD, 1 = character OLED */
 #define LCD_I2C_ADDR_7BIT       0x27    /* PCF8574 7-bit I2C address */
 #define LCD_I2C_ADDR_ALT_7BIT   0x3F    /* Alternate (some backpacks) */
 #define LCD_ROWS                2
@@ -204,7 +224,9 @@
 #define LCD_UPDATE_MS           500     /* Refresh cadence (ms) */
 
 /* LCD backpack bit mapping on the PCF8574:
- *   P0=RS  P1=RW  P2=EN  P3=BL  P4-P7=D4-D7 */
+ *   P0=RS  P1=RW  P2=EN  P3=BL  P4-P7=D4-D7
+ * On a character OLED the "backlight" bit is ignored by the controller,
+ * so leaving it asserted is harmless. */
 #define LCD_BL_BIT              0x08    /* Backlight on = bit 3 high */
 
 /* =========================================================================
