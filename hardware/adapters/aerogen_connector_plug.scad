@@ -4,16 +4,21 @@
  * 3D-printable connector plug that mates with the Aerogen Solo
  * nebulizer cup's 2-pin electrical connector.
  *
- * The Aerogen Solo cup has two long connector pins recessed inside
- * a small rectangular housing (7.25mm × 5.25mm). The pins are spaced
- * 3.25mm apart (center-to-center), caliper-verified.
+ * The Aerogen Solo cup connector is a stepped rectangular housing
+ * 16.5mm deep. The outer entry section (10mm × 8mm) transitions at
+ * 7.25mm depth to a narrower inner slot (7.25mm × 5.25mm) containing
+ * two protruding pins spaced 3.25mm apart (center-to-center).
  *
- * This plug inserts into that housing and makes electrical contact
- * with the pins via spring-loaded pogo pin sockets. A flexible cable
- * connects the plug to the controller enclosure via a JST connector.
+ * This plug fills both sections of the housing and makes electrical
+ * contact with the pins via spring-loaded pogo pin sockets. A flexible
+ * cable connects the plug to the controller enclosure via a JST connector.
  *
- * Connector slot dimensions verified with calipers:
- *   7.25mm × 5.25mm opening, 7.25mm deep, 3.25mm pin spacing.
+ * Connector dimensions verified with calipers (2026-04-12):
+ *   Outer section:  10mm × 8mm, 9.25mm deep
+ *   Inner slot:     7.25mm × 5.25mm, 7.25mm deep, sharp edges
+ *   Pin spacing:    3.25mm center-to-center
+ *   Pin diameter:   1.1mm
+ *   Pin protrusion: 8.5mm from housing floor
  * Print a test fit before committing to final assembly.
  *
  * USAGE:
@@ -38,24 +43,39 @@
  * All dimensions in millimeters.
  * Measured 2026-04-12 with calipers on a physical Aerogen Solo cup.
  *
- * The connector housing on the Aerogen Solo cup is a small rectangular
- * slot on the bottom of the cup containing two protruding pins.
+ * The housing has two sections:
+ *   Outer section — wider entry opening accessible from the cup face
+ *   Inner section — narrow pin slot at the bottom where the pins sit
+ *
+ * Coordinate origin: housing floor (where pins protrude from).
+ * Z increases toward the cup face / housing opening.
  * ===================================================================== */
 
-// --- Connector housing (the slot on the cup) ---
-housing_width       = 7.25;     // Caliper-verified — wider axis of slot opening (along pin row)
-housing_depth       = 5.25;     // Caliper-verified — narrower axis of slot opening
-housing_height      = 7.25;     // Caliper-verified — depth of the slot recess
-housing_corner_r    = 1.0;      // Corner radius of the housing (0 = sharp)       // VERIFY
+// --- Outer section of the housing (entry opening) ---
+housing_outer_w     = 10.0;    // Caliper-verified — outer section width
+housing_outer_d     = 8.0;     // Caliper-verified — outer section depth
+
+// --- Inner section of the housing (narrow pin slot) ---
+housing_inner_w     = 7.25;    // Caliper-verified — inner slot width (along pin row)
+housing_inner_d     = 5.25;    // Caliper-verified — inner slot depth
+housing_inner_h     = 7.25;    // Caliper-verified — inner slot height (floor to step)
+housing_corner_r    = 0;       // Caliper-verified — sharp edges throughout
+
+// --- Total housing depth ---
+housing_total_h     = 16.5;    // Caliper-verified — full depth of the housing
+
+// Derived: height of outer section (step to cup face)
+housing_outer_h     = housing_total_h - housing_inner_h;   // = 9.25mm
 
 // --- Pin dimensions ---
 pin_count           = 2;        // Number of pins in the connector
 pin_spacing         = 3.25;     // Caliper-verified — center-to-center spacing
-pin_diameter        = 1.0;      // Estimated pin diameter                          // VERIFY
-pin_length          = 4.0;      // Estimated pin protrusion from housing floor     // VERIFY
+pin_diameter        = 1.1;      // Caliper-verified — pin diameter
+pin_length          = 8.5;      // Caliper-verified — pin protrusion from housing floor
+                                 //   Note: pins extend 1.25mm into the outer section
 
 // --- Pin layout ---
-// Pins are assumed to be in a line along the width axis, centered in the housing
+// Pins are in a line along the width axis, centered in the housing
 pin_offset_x        = 0.0;      // Offset of pin pair center from housing center (X)
 pin_offset_y        = 0.0;      // Offset of pin pair center from housing center (Y)
 
@@ -82,16 +102,18 @@ pogo_clearance      = 0.15;     // Print clearance around socket barrel
 
 // --- Plug body ---
 plug_clearance      = 0.3;      // Gap between plug and housing walls (for easy insertion)
-plug_wall           = 2.0;      // Wall thickness around the plug body
-plug_base_thickness = 10.0;     // Base thickness below socket channels (houses sockets + wires)
-plug_insertion_depth= 5.0;      // How far the plug inserts into the cup housing
+plug_flange_h       = 6.0;      // Flange thickness (sits outside housing, provides grip)
+plug_flange_extra   = 2.5;      // How much flange extends past the outer housing per side
+plug_flange_r       = 2.0;      // Corner radius of flange (for grip comfort)
 
 // Computed plug dimensions
-plug_inner_w = housing_width - plug_clearance * 2;  // Plug face that enters the housing
-plug_inner_d = housing_depth - plug_clearance * 2;
-plug_outer_w = housing_width + plug_wall * 2;       // Outer grip/body of the plug
-plug_outer_d = housing_depth + plug_wall * 2;
-plug_total_h = plug_base_thickness + plug_insertion_depth;
+plug_outer_w  = housing_outer_w - plug_clearance * 2;   // Outer section fits into 10×8 housing
+plug_outer_d  = housing_outer_d - plug_clearance * 2;
+plug_inner_w  = housing_inner_w - plug_clearance * 2;   // Inner tongue fits into 7.25×5.25 slot
+plug_inner_d  = housing_inner_d - plug_clearance * 2;
+plug_flange_w = housing_outer_w + plug_flange_extra * 2;
+plug_flange_d = housing_outer_d + plug_flange_extra * 2;
+plug_total_h  = plug_flange_h + housing_total_h;
 
 // --- Cable exit ---
 cable_channel_w     = 5.0;      // Width of cable exit channel
@@ -104,7 +126,7 @@ strain_relief_slot_w = 3.0;     // Width of zip-tie slot for strain relief
 strain_relief_slot_d = 2.0;     // Depth of zip-tie slot
 
 // --- Grip features ---
-grip_ridges         = true;     // Add grip ridges on the sides for easy insertion/removal
+grip_ridges         = true;     // Add grip ridges on the flange sides
 grip_ridge_count    = 4;
 grip_ridge_depth    = 0.5;
 
@@ -119,30 +141,35 @@ socket_channel_d = pogo_socket_od + pogo_clearance * 2;
 
 /* =====================================================================
  * PLUG BODY
+ *
+ * Three-section stepped body that follows the housing profile:
+ *   Flange        — grip area, sits outside the housing
+ *   Outer section — fills the 10×8 entry section of the housing
+ *   Inner tongue  — fills the 7.25×5.25 narrow pin slot
  * ===================================================================== */
 
 module plug_body() {
     difference() {
         union() {
-            // Outer grip body (wider part that stays outside the housing)
+            // Flange (grip, outside housing)
             translate([0, 0, 0])
-                rounded_rect(plug_outer_w, plug_outer_d, plug_base_thickness,
-                             housing_corner_r + plug_wall);
+                rounded_rect(plug_flange_w, plug_flange_d, plug_flange_h, plug_flange_r);
 
-            // Insertion tongue (narrower part that enters the housing)
-            translate([0, 0, plug_base_thickness])
-                rounded_rect(plug_inner_w, plug_inner_d, plug_insertion_depth,
-                             max(0.5, housing_corner_r - 0.5));
+            // Outer section (fits into 10×8 outer housing)
+            translate([0, 0, plug_flange_h])
+                rounded_rect(plug_outer_w, plug_outer_d, housing_outer_h, housing_corner_r);
 
-            // Entry chamfer (taper between outer body and insertion tongue)
-            translate([0, 0, plug_base_thickness - 1.0])
+            // Step chamfer: taper from outer section to inner tongue
+            translate([0, 0, plug_flange_h + housing_outer_h - 1.0])
                 hull() {
-                    rounded_rect(plug_outer_w, plug_outer_d, 0.1,
-                                 housing_corner_r + plug_wall);
+                    rounded_rect(plug_outer_w, plug_outer_d, 0.1, housing_corner_r);
                     translate([0, 0, 1.0])
-                        rounded_rect(plug_inner_w, plug_inner_d, 0.1,
-                                     max(0.5, housing_corner_r - 0.5));
+                        rounded_rect(plug_inner_w, plug_inner_d, 0.1, housing_corner_r);
                 }
+
+            // Inner tongue (fits into 7.25×5.25 inner slot)
+            translate([0, 0, plug_flange_h + housing_outer_h])
+                rounded_rect(plug_inner_w, plug_inner_d, housing_inner_h, housing_corner_r);
         }
 
         // Pogo socket channels (vertical holes for the pogo sockets)
@@ -154,7 +181,7 @@ module plug_body() {
         // Cable exit
         cable_exit();
 
-        // Grip ridges (subtractive — grooves in the sides)
+        // Grip ridges (subtractive — grooves in flange sides)
         if (grip_ridges)
             grip_grooves();
 
@@ -180,7 +207,7 @@ module rounded_rect(w, d, h, r) {
  * POGO SOCKET CHANNELS
  *
  * Vertical channels that hold the pogo sockets. The cup's pins push
- * down into these sockets from above (the insertion face).
+ * into these sockets from above (from the inner tongue tip).
  * ===================================================================== */
 
 module socket_channels() {
@@ -188,15 +215,15 @@ module socket_channels() {
         x = pin_offset_x + i * pin_spacing / 2;
         y = pin_offset_y;
 
-        // Main socket channel (full depth)
+        // Main socket channel (full plug height)
         translate([x, y, -0.1])
             cylinder(d=socket_channel_d, h=plug_total_h + 0.2);
 
-        // Wider recess at the bottom for solder cup / wire attachment
+        // Wider recess at the flange bottom for solder cup / wire attachment
         translate([x, y, -0.1])
             cylinder(d=socket_channel_d + 2.0, h=4.1);
 
-        // Pin entry chamfer at the top (guides the cup pin into the socket)
+        // Pin entry chamfer at the top (guides cup pin into socket)
         translate([x, y, plug_total_h - 0.5])
             cylinder(d1=socket_channel_d, d2=socket_channel_d + 1.0, h=0.6);
     }
@@ -205,14 +232,13 @@ module socket_channels() {
 /* =====================================================================
  * WIRE CHANNELS
  *
- * Routes wires from pogo socket solder cups to the cable exit.
+ * Routes wires from pogo socket solder cups (in flange base) to cable exit.
  * ===================================================================== */
 
 module wire_channels() {
-    // Horizontal channel at the base connecting both sockets to the cable exit side
-    channel_z = 2.0;   // Height of channel center above plug bottom
+    channel_z = 2.0;   // Height of channel center above flange bottom
 
-    // Channel from sockets toward cable exit
+    // Lateral channel connecting both socket solder cups
     translate([-pin_spacing/2 - socket_channel_d,
                pin_offset_y - cable_channel_w/2,
                channel_z])
@@ -220,13 +246,13 @@ module wire_channels() {
               cable_channel_w,
               cable_channel_h]);
 
-    // Channel from pin area to the cable exit edge
+    // Longitudinal channel from pin area to cable exit edge
     if (cable_exit_side == "back") {
         translate([pin_offset_x - cable_channel_w/2,
                    pin_offset_y,
                    channel_z])
             cube([cable_channel_w,
-                  plug_outer_d/2 + 1,
+                  plug_flange_d/2 + 1,
                   cable_channel_h]);
     }
 }
@@ -237,12 +263,12 @@ module wire_channels() {
 
 module cable_exit() {
     if (cable_exit_side == "back") {
-        // Cable exits from the back face of the plug body
-        translate([pin_offset_x, plug_outer_d/2 - 0.1, 2.0 + cable_channel_h/2])
+        // Cable exits from the back face of the flange
+        translate([pin_offset_x, plug_flange_d/2 - 0.1, 2.0 + cable_channel_h/2])
             rotate([-90, 0, 0])
-                cylinder(d=cable_channel_h + 1, h=plug_wall + 0.2);
+                cylinder(d=cable_channel_h + 1, h=plug_flange_extra + 0.2);
     } else {
-        // Cable exits from the bottom face
+        // Cable exits from the bottom face of the flange
         translate([pin_offset_x, pin_offset_y, -0.1])
             cylinder(d=cable_channel_h + 1, h=2.0);
     }
@@ -253,13 +279,13 @@ module cable_exit() {
  * ===================================================================== */
 
 module grip_grooves() {
-    groove_spacing = plug_base_thickness / (grip_ridge_count + 1);
+    groove_spacing = plug_flange_h / (grip_ridge_count + 1);
     for (side = [0, 180]) {
         for (i = [1:grip_ridge_count]) {
             rotate([0, 0, side])
-                translate([plug_outer_w/2 - grip_ridge_depth, -plug_outer_d/2 - 0.1,
+                translate([plug_flange_w/2 - grip_ridge_depth, -plug_flange_d/2 - 0.1,
                            i * groove_spacing - 0.3])
-                    cube([grip_ridge_depth + 0.1, plug_outer_d + 0.2, 0.6]);
+                    cube([grip_ridge_depth + 0.1, plug_flange_d + 0.2, 0.6]);
         }
     }
 }
@@ -270,9 +296,9 @@ module grip_grooves() {
 
 module strain_relief() {
     if (cable_exit_side == "back") {
-        // Zip-tie slot behind the cable exit
+        // Zip-tie slot behind the cable exit on the flange back face
         translate([pin_offset_x - strain_relief_slot_w * 1.5,
-                   plug_outer_d/2 - strain_relief_slot_d,
+                   plug_flange_d/2 - strain_relief_slot_d,
                    0])
             cube([strain_relief_slot_w * 3, strain_relief_slot_d + 0.1, strain_relief_slot_w]);
     }
@@ -291,7 +317,7 @@ plug_body();
     for (i = [-1, 1]) {
         x = pin_offset_x + i * pin_spacing / 2;
         y = pin_offset_y;
-        // Cup pins coming down from above into the sockets
+        // Cup pins protrude upward from housing floor into plug sockets
         translate([x, y, plug_total_h - pin_length])
             cylinder(d=pin_diameter, h=pin_length + 2);
     }
@@ -305,16 +331,16 @@ plug_body();
  *
  * 2. Insert pogo pin sockets:
  *    - Push one P75-B1 (or P75-E2) pogo socket into each channel
- *      from the bottom of the plug
+ *      from the bottom of the flange
  *    - The socket's receiving end (open bore) should face UP
- *      toward the insertion face
+ *      toward the inner tongue tip
  *    - Optionally secure with a tiny drop of CA glue on the barrel
  *      (NOT on the spring mechanism)
  *
  * 3. Solder cable:
  *    - Cut two lengths of flexible stranded wire (24-28 AWG), ~30-50cm
  *    - Solder one wire to each pogo socket's solder cup
- *    - Route wires through the cable channel
+ *    - Route wires through the cable channel in the flange
  *    - No polarity requirement — PZT is an AC device
  *
  * 4. Terminate cable:
@@ -341,11 +367,6 @@ plug_body();
  *   - The cable runs from the connector plug to the controller
  *     enclosure, through a PG7 cable gland in the enclosure wall
  *
- * STILL TO VERIFY WITH CALIPERS:
- *   - pin_diameter (estimated 1.0mm)
- *   - pin_length (estimated 4.0mm protrusion from floor)
- *   - housing_corner_r (estimated 1.0mm — sharp vs rounded?)
- *
- *   The plug_clearance parameter controls fit tightness — adjust
+ * All dimensions are caliper-verified. Adjust plug_clearance
  *   ±0.1mm from 0.3mm if too tight or too loose after a test print.
  * ===================================================================== */
