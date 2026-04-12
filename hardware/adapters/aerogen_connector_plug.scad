@@ -13,7 +13,8 @@
  * connects the plug to the controller enclosure via a JST connector.
  *
  * Connector slot dimensions verified with calipers:
- *   7.25mm × 5.25mm opening, 7.25mm deep, 3.25mm pin spacing.
+ *   7.25mm × 5.25mm opening, 7.25mm deep, 3.25mm pin spacing,
+ *   1.1mm pin diameter, 8.5mm pin protrusion, sharp-edged slot.
  * Print a test fit before committing to final assembly.
  *
  * USAGE:
@@ -46,13 +47,13 @@
 housing_width       = 7.25;     // Caliper-verified — wider axis of slot opening (along pin row)
 housing_depth       = 5.25;     // Caliper-verified — narrower axis of slot opening
 housing_height      = 7.25;     // Caliper-verified — depth of the slot recess
-housing_corner_r    = 1.0;      // Corner radius of the housing (0 = sharp)       // VERIFY
+housing_corner_r    = 0;        // Caliper-verified — housing slot has sharp edges (0 = sharp)
 
 // --- Pin dimensions ---
 pin_count           = 2;        // Number of pins in the connector
 pin_spacing         = 3.25;     // Caliper-verified — center-to-center spacing
-pin_diameter        = 1.0;      // Estimated pin diameter                          // VERIFY
-pin_length          = 4.0;      // Estimated pin protrusion from housing floor     // VERIFY
+pin_diameter        = 1.1;      // Caliper-verified — pin diameter
+pin_length          = 8.5;      // Caliper-verified — pin protrusion from housing floor
 
 // --- Pin layout ---
 // Pins are assumed to be in a line along the width axis, centered in the housing
@@ -341,11 +342,6 @@ plug_body();
  *   - The cable runs from the connector plug to the controller
  *     enclosure, through a PG7 cable gland in the enclosure wall
  *
- * STILL TO VERIFY WITH CALIPERS:
- *   - pin_diameter (estimated 1.0mm)
- *   - pin_length (estimated 4.0mm protrusion from floor)
- *   - housing_corner_r (estimated 1.0mm — sharp vs rounded?)
- *
- *   The plug_clearance parameter controls fit tightness — adjust
+ * All dimensions are now caliper-verified. Adjust plug_clearance
  *   ±0.1mm from 0.3mm if too tight or too loose after a test print.
  * ===================================================================== */
