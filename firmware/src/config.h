@@ -151,6 +151,63 @@
 #define DRY_CUP_CONFIRM_MS     3000    /* Must stay low this long to confirm (ms) */
 
 /* =========================================================================
+ * BATTERY MONITORING
+ *
+ * The v3.1 turnkey build uses a rechargeable LiPo cell (3.7V nominal,
+ * 3.0-4.2V range) charged via a TP4056/DW01A module with USB-C input.
+ * The MCU is powered directly from the battery — VDD rails with Vbat.
+ *
+ * Rather than spending GPIOs on an external voltage divider, we use the
+ * PIC16F1713's Fixed Voltage Reference (FVR) as an ADC input channel.
+ * With VDD as the ADC reference and FVR=2.048V as the measured signal,
+ * we can back-calculate VDD (= Vbat) in firmware:
+ *
+ *     Vbat_mV  =  (FVR_mV * 1023)  /  ADC_reading
+ *
+ * Zero external components. ADC channel 31 is wired to the FVR internally.
+ *
+ * Thresholds for LiPo state-of-charge warnings. These are approximate —
+ * LiPo discharge curves are not linear and sag under load.
+ * ========================================================================= */
+#define BATTERY_ENABLED         1       /* 1 = monitor battery, 0 = skip */
+#define BATTERY_FULL_MV         4150    /* ~100% SOC */
+#define BATTERY_NOMINAL_MV      3700    /* ~50% SOC */
+#define BATTERY_LOW_MV          3500    /* ~20% SOC — start warning */
+#define BATTERY_CRIT_MV         3100    /* ~5% SOC — refuse start, auto-stop */
+#define BATTERY_SAMPLE_MS       1000    /* Sample every 1 second */
+
+/* FVR voltage selected for ADC input. PIC16F1713 FVRCON ADFVR bits:
+ *   01 = 1.024V (needs VDD >= ~1.5V)
+ *   10 = 2.048V (needs VDD >= ~2.5V) <-- chosen: works over full LiPo range
+ *   11 = 4.096V (needs VDD >= ~4.75V, NOT usable on LiPo) */
+#define FVR_MV                  2048
+#define ADC_CH_FVR              31      /* PIC16F1713 ADC internal FVR channel */
+
+/* =========================================================================
+ * CHARACTER LCD (1602 I2C)
+ *
+ * A standard 16x2 HD44780 character LCD with a PCF8574 I2C backpack.
+ * Wired to two GPIO pins on PORTC using software (bit-bang) I2C at ~100 kHz.
+ *
+ * The backpack typically uses address 0x27 (NXP PCF8574) or 0x3F (TI variant).
+ * If your display is blank, try the alternate address.
+ *
+ * Display layout:
+ *   Line 1: state + frequency  (e.g., "RUN 128.5kHz    ")
+ *   Line 2: battery + elapsed  (e.g., "Bat 87% 3.95V  ")
+ * ========================================================================= */
+#define LCD_ENABLED             1       /* 1 = drive LCD, 0 = no LCD */
+#define LCD_I2C_ADDR_7BIT       0x27    /* PCF8574 7-bit I2C address */
+#define LCD_I2C_ADDR_ALT_7BIT   0x3F    /* Alternate (some backpacks) */
+#define LCD_ROWS                2
+#define LCD_COLS                16
+#define LCD_UPDATE_MS           500     /* Refresh cadence (ms) */
+
+/* LCD backpack bit mapping on the PCF8574:
+ *   P0=RS  P1=RW  P2=EN  P3=BL  P4-P7=D4-D7 */
+#define LCD_BL_BIT              0x08    /* Backlight on = bit 3 high */
+
+/* =========================================================================
  * PIN ASSIGNMENTS — PIC16F1713 DIP-28
  *
  * These match the wiring guide in hardware/WIRING.md.
@@ -170,8 +227,16 @@
 /* Digital inputs */
 #define BUTTON_PORT         PORTBbits.RB0       /* RB0 (pin 21) */
 
+/* LCD bit-bang I2C pins (open-drain, external pull-ups on LCD backpack) */
+#define LCD_SDA_TRIS        TRISCbits.TRISC4    /* RC4 (pin 15) — SDA */
+#define LCD_SDA_LAT         LATCbits.LATC4
+#define LCD_SDA_PORT        PORTCbits.RC4
+#define LCD_SCL_TRIS        TRISCbits.TRISC5    /* RC5 (pin 16) — SCL */
+#define LCD_SCL_LAT         LATCbits.LATC5
+#define LCD_SCL_PORT        PORTCbits.RC5
+
 /* Peripheral output pins (directly controlled by hardware peripherals) */
-/* RA4 (pin 6)  = CWG1A output — drives boost MOSFET Q2 gate */
+/* RA4 (pin 6)  = CWG1A output — drives boost MOSFET Q2 gate (discrete mode) */
 /* RC3 (pin 14) = NCO1 output  — drives output MOSFET Q4 gate */
 
 /* =========================================================================
@@ -182,5 +247,12 @@
  * ========================================================================= */
 #define UART_BAUD_RATE      9600
 #define UART_ENABLED        1           /* Set to 0 to disable */
+
+/* Helpful conversion macro — NCO increment register back to output Hz.
+ * freq_hz = NCO_INC * Fosc / 2^20 = NCO_INC * 16e6 / 2^20
+ *         = NCO_INC * 15625 / 1024   (exact integer form)
+ *
+ * Used by the LCD display to show the locked resonant frequency in kHz. */
+#define NCO_INC_TO_HZ(inc)  ((uint32_t)((uint32_t)(inc) * 15625UL / 1024UL))
 
 #endif /* CONFIG_H */
