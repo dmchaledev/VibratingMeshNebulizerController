@@ -5,17 +5,16 @@
  * nebulizer cup's 2-pin electrical connector.
  *
  * The Aerogen Solo cup has two long connector pins recessed inside
- * a small rectangular housing (~1/2" x 1/2"). The pins are spaced
- * approximately 1/8" apart (center-to-center).
+ * a small rectangular housing (7.25mm × 5.25mm). The pins are spaced
+ * 3.25mm apart (center-to-center), caliper-verified.
  *
  * This plug inserts into that housing and makes electrical contact
  * with the pins via spring-loaded pogo pin sockets. A flexible cable
  * connects the plug to the controller enclosure via a JST connector.
  *
- * IMPORTANT: These dimensions are APPROXIMATE — measured without
- * calipers. When you get calipers, re-measure and update the values
- * in the "CONNECTOR MEASUREMENTS" section below. Print a test fit
- * first before committing to final assembly.
+ * Connector slot dimensions verified with calipers:
+ *   7.25mm × 5.25mm opening, 7.25mm deep, 3.25mm pin spacing.
+ * Print a test fit before committing to final assembly.
  *
  * USAGE:
  *   1. Measure your Aerogen Solo cup connector with calipers
@@ -34,25 +33,24 @@
  */
 
 /* =====================================================================
- * CONNECTOR MEASUREMENTS — Update with YOUR caliper measurements
+ * CONNECTOR MEASUREMENTS — Caliper-verified on Aerogen Solo cup
  *
  * All dimensions in millimeters.
- * Current values are ESTIMATES based on visual inspection without
- * calipers. Mark values with "// VERIFY" that need caliper confirmation.
+ * Measured 2026-04-12 with calipers on a physical Aerogen Solo cup.
  *
  * The connector housing on the Aerogen Solo cup is a small rectangular
- * box on the bottom of the cup containing two protruding pins.
+ * slot on the bottom of the cup containing two protruding pins.
  * ===================================================================== */
 
-// --- Connector housing (the box on the cup) ---
-housing_width       = 12.7;     // ~1/2 inch — width of the rectangular housing   // VERIFY
-housing_depth       = 12.7;     // ~1/2 inch — depth of the rectangular housing   // VERIFY
-housing_height      = 6.0;      // Estimated height/depth of housing recess       // VERIFY
+// --- Connector housing (the slot on the cup) ---
+housing_width       = 7.25;     // Caliper-verified — wider axis of slot opening (along pin row)
+housing_depth       = 5.25;     // Caliper-verified — narrower axis of slot opening
+housing_height      = 7.25;     // Caliper-verified — depth of the slot recess
 housing_corner_r    = 1.0;      // Corner radius of the housing (0 = sharp)       // VERIFY
 
 // --- Pin dimensions ---
 pin_count           = 2;        // Number of pins in the connector
-pin_spacing         = 3.175;    // ~1/8 inch center-to-center spacing             // VERIFY
+pin_spacing         = 3.25;     // Caliper-verified — center-to-center spacing
 pin_diameter        = 1.0;      // Estimated pin diameter                          // VERIFY
 pin_length          = 4.0;      // Estimated pin protrusion from housing floor     // VERIFY
 
@@ -343,16 +341,11 @@ plug_body();
  *   - The cable runs from the connector plug to the controller
  *     enclosure, through a PG7 cable gland in the enclosure wall
  *
- * WHEN YOU GET CALIPERS:
- *   Measure these on your Aerogen Solo cup and update the values above:
- *   - housing_width, housing_depth (the rectangular box dimensions)
- *   - housing_height (depth of the recess)
- *   - pin_spacing (center-to-center, the most critical measurement)
- *   - pin_diameter
- *   - pin_length (how far pins protrude)
- *   - housing_corner_r (are the corners rounded or sharp?)
+ * STILL TO VERIFY WITH CALIPERS:
+ *   - pin_diameter (estimated 1.0mm)
+ *   - pin_length (estimated 4.0mm protrusion from floor)
+ *   - housing_corner_r (estimated 1.0mm — sharp vs rounded?)
  *
- *   Then re-render, re-print, and test fit. The plug_clearance parameter
- *   controls how snugly the plug fits in the housing — start at 0.3mm
- *   and adjust ±0.1mm if too tight or too loose.
+ *   The plug_clearance parameter controls fit tightness — adjust
+ *   ±0.1mm from 0.3mm if too tight or too loose after a test print.
  * ===================================================================== */

@@ -82,8 +82,16 @@ static void gpio_init(void)
     TRISB = 0b11000001;     /* RB0 input, RB1-RB5 output, RB6-RB7 ICSP */
 
     /* Port C direction: RC0-RC1 output (LEDs), RC3 output (NCO),
-     * RC6 output (TX), RC7 input (RX) */
+     * RC4 open-drain I2C SDA, RC5 open-drain I2C SCL,
+     * RC6 output (TX), RC7 input (RX).
+     *
+     * The LCD I2C pins start as inputs (released = high via backpack pull-ups).
+     * Driving low is done by setting LAT=0 and TRIS=0. See lcd.c. */
+#if LCD_ENABLED
+    TRISC = 0b10110000;     /* RC4, RC5 input (released), RC7 input, rest out */
+#else
     TRISC = 0b10000000;     /* RC7 input, rest output */
+#endif
 
     /* Initialize outputs low */
     LATA = 0x00;
@@ -190,6 +198,16 @@ static void adc_init(void)
     ADCON1bits.ADNREF = 0;      /* Negative reference = VSS */
 
     ADCON0bits.ADON = 1;        /* Enable ADC */
+
+#if BATTERY_ENABLED
+    /* Enable the Fixed Voltage Reference and route its 2.048V tap to the
+     * ADC input multiplexer. We then read ADC channel 31 to measure FVR
+     * against VDD, which lets us solve for VDD = Vbat. */
+    FVRCONbits.ADFVR = 0b10;    /* FVR for ADC = 2x gain = 2.048V */
+    FVRCONbits.FVREN = 1;       /* Enable the FVR module */
+    while (!FVRCONbits.FVRRDY)  /* Wait for FVR to stabilize */
+        ;
+#endif
 }
 
 uint16_t adc_read(uint8_t channel)
@@ -197,8 +215,13 @@ uint16_t adc_read(uint8_t channel)
     /* Select channel */
     ADCON0bits.CHS = channel & 0x1F;
 
-    /* Acquisition delay — ~10 us for input to settle */
-    __delay_us(10);
+    /* Acquisition delay — ~10 us for input to settle.
+     * The internal FVR source has higher output impedance than
+     * external pins; give it more settling time. */
+    if (channel == ADC_CH_FVR)
+        __delay_us(50);
+    else
+        __delay_us(10);
 
     /* Start conversion */
     ADCON0bits.GO_nDONE = 1;
@@ -210,6 +233,46 @@ uint16_t adc_read(uint8_t channel)
     /* Return 10-bit result */
     return (uint16_t)((ADRESH << 8) | ADRESL);
 }
+
+#if BATTERY_ENABLED
+/* ========================================================================
+ * Battery voltage measurement via FVR reference trick
+ *
+ * We configure the ADC with VDD as the positive reference, then sample
+ * the FVR (2.048V) through ADC channel 31. The ADC result represents
+ * the ratio FVR / VDD. Solving for VDD gives us the battery voltage:
+ *
+ *     adc_result  =  FVR * 1023  /  VDD
+ *     VDD         =  FVR * 1023  /  adc_result
+ *
+ * Because the PIC MCU is powered directly from the LiPo in this build,
+ * VDD tracks the battery voltage exactly.
+ * ======================================================================== */
+uint16_t battery_read_mv(void)
+{
+    uint16_t adc = adc_read(ADC_CH_FVR);
+
+    /* Guard against divide-by-zero and unreasonably small readings.
+     * At VDD=5.5V the expected code is ~381; at VDD=2.0V it's ~1048 (saturated).
+     * Anything under ~180 is impossible and indicates a hardware fault. */
+    if (adc < 180)
+        return 0;
+
+    return (uint16_t)(((uint32_t)FVR_MV * 1023UL) / adc);
+}
+
+uint8_t battery_percent(uint16_t mv)
+{
+    /* Piecewise-linear SOC approximation for a 1S LiPo under light load.
+     * Knee points loosely match a typical 3.7V pouch cell discharge curve. */
+    if (mv >= BATTERY_FULL_MV)       return 100;
+    if (mv >= 3950) return (uint8_t)(75 + ((uint16_t)(mv - 3950) * 25) / 200);
+    if (mv >= 3800) return (uint8_t)(50 + ((uint16_t)(mv - 3800) * 25) / 150);
+    if (mv >= 3600) return (uint8_t)(25 + ((uint16_t)(mv - 3600) * 25) / 200);
+    if (mv >  3000) return (uint8_t)(((uint16_t)(mv - 3000) * 25) / 600);
+    return 0;
+}
+#endif /* BATTERY_ENABLED */
 
 /* ========================================================================
  * CWG1 — Complementary Waveform Generator

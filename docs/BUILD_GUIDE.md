@@ -1,6 +1,6 @@
-# Build Guide — Turnkey (JLCPCB Pre-Assembled)
+# Nimbus Build Guide — Turnkey (JLCPCB Pre-Assembled)
 
-Complete guide to assembling the Aerogen Solo controller from a JLCPCB pre-assembled PCB.
+Complete guide to assembling the Nimbus Nebulizer Controller from a JLCPCB pre-assembled PCB.
 
 **Read [DISCLAIMER.md](../DISCLAIMER.md) before starting.**
 
@@ -23,30 +23,57 @@ The two exposed connector pins on the Aerogen Solo cup are simply the two leads 
 
 Order the pre-assembled PCB following [JLCPCB_ORDERING_GUIDE.md](JLCPCB_ORDERING_GUIDE.md). JLCPCB solders all surface-mount components. You receive a completed board ready for firmware programming.
 
-### User-Supplied Parts
+### User-Supplied Parts (v3.1)
 
 See [BOM_TURNKEY.csv](BOM_TURNKEY.csv) for the complete list. The key items you supply:
 
 | Item | Source | Cost |
 |------|--------|------|
 | MT3608 or XL6009 boost module | Amazon/AliExpress | ~$1-2 |
-| USB-C cable (power) | Any | ~$0 (you have one) |
-| JST-XH 2-pin cable | Amazon/DigiKey | ~$1 |
+| 1S LiPo pouch cell, 2000 mAh (103450) | Amazon B07BTWK13N | ~$8-12 |
+| TP4056 + DW01A Type-C charger | Amazon B0CWNXKR4X (15-pack) | ~$0.50-2 |
+| 16x2 character display (LCD default, OLED optional) | see below | ~$3 (LCD) or ~$25 (OLED) |
+| USB-C cable (charging) | Any | ~$0 (you have one) |
+| JST-XH 2-pin cable (cup output) | Amazon/DigiKey | ~$1 |
+| JST-PH 2-pin cable (battery pigtail) | Amazon/DigiKey | ~$1 |
+| 4-wire Dupont ribbon (LCD) | Amazon/DigiKey | ~$0.50 |
 | P75-B1 pogo pins (2) | Amazon/AliExpress | ~$3/50-pack |
-| M2.5x6mm screws (4) | Amazon/hardware store | ~$1 |
+| M2.5x6mm screws (4, PCB mount) | Amazon/hardware store | ~$1 |
+| M3x6mm screws (4, LCD mount) | Amazon/hardware store | ~$1 |
 | MPLAB Snap programmer | DigiKey PG164100-ND | ~$35 (one-time) |
+
+#### Picking a Display
+
+v3.1 supports any 16x2 character display with an HD44780-compatible
+command set driven by a PCF8574 I2C backpack. Three popular choices:
+
+| Option | Part | Cost | Notes |
+|--------|------|------|-------|
+| **A** | Generic 1602 LCD + "LCD1602 IIC" backpack | ~$3-5 | `LCD_IS_OLED = 0`. Works in the dark thanks to its backlight; contrast may be dim below ~3.7 V battery. |
+| **B (default)** | Winstar WEH001602A + PCF8574 backpack | ~$22-28 | `LCD_IS_OLED = 1`. Character OLED with WS0010 controller. Rated 3.0-5.5 V — stays crisp at any battery level. |
+| **C** | Newhaven NHD-0216AW-IB3 | ~$25-32 | `LCD_IS_OLED = 1`. Has I2C built in — no external backpack needed. |
+
+The firmware driver is the same for all three; only the `LCD_IS_OLED`
+flag in `firmware/src/config.h` changes. If you already have the PCB
+and want to upgrade the display later, you can do so without any
+hardware changes.
 
 ### 3D-Printed Parts
 
-Print from the OpenSCAD files in this repo (or order from JLCPCB 3D printing):
+v3.1 splits the enclosure into separate base and lid files so you can
+iterate on either without re-rendering the other.
 
 | Part | File | Material |
 |------|------|----------|
 | Connector plug | `hardware/adapters/aerogen_connector_plug.scad` | PETG or SLA resin |
 | Enclosure base | `hardware/enclosure/controller_enclosure.scad` | PETG |
-| Enclosure lid | `hardware/enclosure/controller_enclosure.scad` | PETG |
+| Enclosure lid | `hardware/enclosure/controller_enclosure_lid.scad` | PETG |
 
-Print settings: 0.2mm layer height, 30-50% infill, supports enabled.
+Shared dimensions live in `hardware/enclosure/enclosure_config.scad` —
+edit it once and both base and lid stay in sync.
+
+Print settings: 0.2mm layer height, 30-50% infill, supports disabled
+(both files are orientation-friendly).
 
 ### Tools
 
@@ -87,26 +114,70 @@ See [hardware/adapters/README.md](../hardware/adapters/README.md) for detailed i
 5. Crimp or solder wires to a JST-XH 2-pin plug
 6. Test-fit with an Aerogen Solo cup — pins should compress when cup seats
 
-### Step 4: Final Assembly
+### Step 4: Prepare the LiPo + TP4056 Bay (v3.1)
 
-1. **Mount PCB** in enclosure base using M2.5 screws
-2. **Connect boost module** to the JST header labeled "BOOST IN" on the PCB
-3. **Connect connector plug** JST cable to the output header
-4. **Insert batteries** (3x AAA) into the battery compartment, or connect USB-C power
-5. **Snap on enclosure lid**
+1. **Inspect the LiPo cell.** Check the JST-PH pigtail polarity with
+   a multimeter — the red lead must be +, black must be -. Do NOT
+   trust the wire colors on a cheap cell without verifying.
+2. **Pre-charge the cell** by connecting USB-C to the TP4056 module
+   with its BAT pads still disconnected. The red charging LED should
+   light. Unplug USB.
+3. **Solder two short (~50 mm) wires** from the TP4056 BAT+ / BAT-
+   pads to a matching JST-PH 2-pin plug that will mate with the PCB's
+   BAT IN header. Double-check polarity — the PCB BAT IN header is
+   keyed but the solder pads on the TP4056 are not.
+4. **Seat the LiPo** in the enclosure battery bay (flat on the floor).
+5. **Drop the TP4056** onto the internal shelf above the cell, USB-C
+   socket facing the front aperture. Light double-sided foam tape
+   keeps it from rattling.
 
-### Step 5: First Power-Up
+### Step 5: Mount the LCD/OLED on the Lid
+
+1. Feed the 4-pin Dupont ribbon through the lid's LCD wire slot.
+2. Connect one end to the LCD backpack: VCC → VCC, GND → GND,
+   SDA → SDA, SCL → SCL.
+3. Position the LCD PCB over the four standoffs inside the lid,
+   glass side facing out through the viewing window.
+4. Secure with four M3 x 6 mm screws.
+5. Peel off any protective film from the glass only AFTER all
+   screws are tight — it's easy to scratch before the bezel seats.
+
+### Step 6: Final Assembly
+
+1. **Mount PCB** in the enclosure base using 4x M2.5x6 mm screws
+2. **Connect boost module** to the JST header labeled "BOOST IN"
+3. **Connect connector plug** JST cable to the cup output header
+4. **Connect the LiPo pigtail** from the TP4056 BAT pads to the
+   PCB's BAT IN JST-PH header
+5. **Connect the LCD ribbon** from the lid to the PCB's 1x4 LCD
+   header (match VCC/GND/SDA/SCL)
+6. **Close the lid** — the standoffs should seat cleanly on the
+   lid lip. Give the ribbon some slack so it isn't pinched.
+
+### Step 7: First Power-Up
 
 1. **Do NOT connect a nebulizer cup yet**
-2. Power the circuit (USB-C or batteries)
-3. Red LED should illuminate (IDLE state)
-4. Measure VBOOST on the boost module output — should read ~12V
-5. Press the start button — red LED should blink (searching for cup)
-6. After ~3 seconds with no cup, it should error (blinking red) — this is correct
-7. Fill an Aerogen Solo cup with **normal saline** (not medication)
-8. Seat the cup in the connector plug
-9. Press start — green LED should light when resonance is found
-10. Fine mist should appear within seconds
+2. **Charge the cell** — plug USB-C into the TP4056 aperture until
+   the red charge LED on the module turns off (~1-2 hours)
+3. **Unplug USB**. The display should show the splash:
+   ```
+   Nimbus Nebulizer
+    Controller v3.1
+   ```
+   After ~1.5 s it switches to the status line:
+   ```
+   READY  128.5kHz
+   Bat 98%  4.13V
+   ```
+4. Red LED should also illuminate (IDLE state)
+5. Measure VBOOST on the boost module output — should read ~12V
+6. Press the start button — LCD should show `SWEEP...` then either
+   `RUN 128.5kHz MM:SS` or `ERR no cup`
+7. After ~3 seconds with no cup it should error — this is correct
+8. Fill an Aerogen Solo cup with **normal saline** (not medication)
+9. Seat the cup in the connector plug
+10. Press start — `RUN 128.5kHz 00:01` should appear and fine mist
+    should start within seconds
 
 ---
 
@@ -138,14 +209,21 @@ All tunable parameters are in `firmware/src/config.h`:
 
 ---
 
-## Power Supply Options
+## Power Supply (v3.1)
 
-| Option | Voltage | Notes |
-|--------|---------|-------|
-| **3x AAA batteries** | 4.5V nominal | Fits in enclosure battery compartment. Best for portable use. |
-| **USB 5V** | 5.0V | Via USB-C connector on enclosure. Best for bedside use. |
+v3.1 uses a rechargeable 1S LiPo pouch cell charged through a
+TP4056/DW01A USB-C module. There is no separate 5V rail — the MCU
+and the boost module both run directly off the cell (3.0-4.2 V).
 
-Both options work simultaneously — USB power takes priority when connected.
+| Path | Voltage | Notes |
+|------|---------|-------|
+| **LiPo 1S** | 3.0-4.2 V (3.7 V nominal) | Powers MCU + boost module. Runtime ~3-5 treatments per charge. |
+| **USB-C (TP4056)** | 5 V in → 4.2 V CV charge | Plug in to recharge. You can also run from USB while charging. |
+
+The firmware continuously monitors battery voltage via the PIC's Fixed
+Voltage Reference and shows percent + millivolts on the LCD. A soft
+cutoff at 3.1 V warns the user and stops any running treatment before
+the DW01A hardware protection (2.5 V) trips.
 
 ---
 

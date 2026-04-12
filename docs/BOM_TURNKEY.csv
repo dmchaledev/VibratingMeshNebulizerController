@@ -37,10 +37,11 @@ Quantity,Reference,Component,Value,JLCPCB P/N or Source,Package,Category,Notes
 1,,Resistor,10K,C25804,0603,MCU,MCLR pull-up
 ,,,,,,,
 ,,--- CONNECTORS (SMD/TH on PCB) ---,,,,,
-1,,USB-C Receptacle,Power Input,C165948,SMD,Power,"USB-C for 5V power input. Wired for power only (no data needed). Or use 2-pin JST if preferred."
+1,,JST-PH 2-Pin Header,Battery Input (BAT IN),C265061,Through-hole,Power,"v3.1: replaces USB-C receptacle. Accepts LiPo pack via TP4056 BAT+ / BAT- wires. Keyed so you can't reverse polarity."
 1,,JST-XH 2-Pin Header,Cup Output,C158012,Through-hole,Output,Connects to nebulizer cup adapter via JST cable
 1,,Pin Header 1x5,ICSP,C358687,Through-hole,Programming,"For flashing firmware. Accessible through enclosure port."
 1,,JST-XH 2-Pin Header,Boost Module Input,C158012,Through-hole,Power,Connects to boost module output
+1,,Pin Header 1x4,LCD/OLED I2C,C124378,Through-hole,UI,"v3.1: 4-pin header (VCC/GND/SDA/SCL) for 16x2 character display on lid. Wired to RC4/RC5."
 ,,,,,,,
 ,,--- USER INTERFACE (TH on PCB) ---,,,,,
 1,SW1,Tactile Switch,6x6mm,C318884,Through-hole,UI,Start/stop button. Can use SMD variant if preferred.
@@ -53,24 +54,36 @@ Quantity,Reference,Component,Value,JLCPCB P/N or Source,Package,Category,Notes
 ,,=== USER-SUPPLIED (not on PCB — plug in or add separately) ===,,,,,
 ,,,,,,,
 1,,Boost Module,MT3608 or XL6009,Amazon/eBay/AliExpress,,External Module,"~$1-2. Set output to ~12V with trim pot before connecting. Plugs into JST header on PCB."
-1,,USB-C Cable,Power,Any,,Cable,Standard USB-C cable for 5V power from any phone charger or USB port
+1,,LiPo Cell,103450 1S 2000mAh,Amazon B07BTWK13N (smaller 803040 works too),,Power,"v3.1: rechargeable 1S LiPo pouch cell. 103450 = ~52x34x10 mm fits the enclosure bay. Must have a JST-PH pigtail — if not wired, solder one on carefully. $8-12."
+1,,Charging Module,TP4056 + DW01A w/ Type-C,Amazon B0CWNXKR4X (15-pack),,Power,"v3.1: USB-C LiPo charger with built-in DW01A protection (over-charge, over-discharge, over-current). ~$0.50 ea in 15-pack. Mount on internal shelf in the battery bay."
+1,,USB-C Cable,Charging,Any,,Cable,Standard USB-C cable. Plugs into the TP4056 module for charging. ~$0 (you have one)
+1,,"LCD or OLED, 1602","16x2 character w/ I2C backpack","(A) Amazon LCD1602 I2C kit ~$3, or (B) Winstar WEH001602 + PCF8574 ~$25, or (C) Newhaven NHD-0216AW-IB3 ~$28",,UI,"v3.1: 16x2 character display for status/battery/frequency. Option (A) is the cheap HD44780 LCD (LCD_IS_OLED=0). Options (B)(C) are character OLEDs with much nicer contrast and viewing angle (set LCD_IS_OLED=1). All three work with the same firmware driver."
 1,,JST-XH 2-Pin Cable,Cup Adapter Cable,Amazon/DigiKey,,Cable,"Pre-made JST-XH pigtail cable. Connects PCB to cup adapter. ~$1 for a 5-pack."
+1,,JST-PH 2-Pin Cable,Battery Pigtail,Amazon/DigiKey,,Cable,"Short JST-PH pigtail to go between TP4056 BAT pads and the PCB BAT IN header. ~$1 for a 10-pack. Many LiPo cells already ship with one attached."
+1,,4-Wire Dupont Cable,LCD I2C Ribbon,Amazon/DigiKey,,Cable,"4-pin female-female Dupont jumper (VCC/GND/SDA/SCL), ~100mm. Connects the lid LCD to the PCB LCD header. ~$0.50."
 1,,3D Printed Adapter,Cup-specific,See hardware/adapters/,,Mechanical,"Print from OpenSCAD files. Or order from JLCPCB 3D printing service."
 2,,P75-B1 Pogo Pins,,Amazon/AliExpress,,Mechanical,Spring-loaded contacts for the cup adapter. ~$3 for a 50-pack.
-1,,3D Printed Enclosure,,See hardware/enclosure/,,Mechanical,"Print from OpenSCAD file. Or order from JLCPCB 3D printing service."
-4,,M2.5x6mm Screws,,Amazon/hardware store,,Hardware,To mount PCB in enclosure
+1,,3D Printed Enclosure Base,,hardware/enclosure/controller_enclosure.scad,,Mechanical,"Print from OpenSCAD. Base only — v3.1 split from the lid."
+1,,3D Printed Enclosure Lid,,hardware/enclosure/controller_enclosure_lid.scad,,Mechanical,"Print from OpenSCAD. Has the LCD viewing window and standoffs."
+4,,M2.5x6mm Screws,PCB mount,Amazon/hardware store,,Hardware,To mount PCB in enclosure
+4,,M3x6mm Screws,LCD mount,Amazon/hardware store,,Hardware,"v3.1: mounts the LCD/OLED PCB to the four standoffs in the lid."
 1,,MPLAB Snap or PICkit 4,Programmer,DigiKey PG164100-ND,,Programmer,"One-time purchase ~$35. Needed to flash firmware onto the PIC16F1713."
 ,,,,,,,
 ,,,,,,,
-,,=== COST ESTIMATE ===,,,,,
+,,=== COST ESTIMATE (v3.1) ===,,,,,
 ,,,,,,,
 ,,JLCPCB PCB fabrication (5 boards),,$2-5,,,"Min order 5 boards. Use the Gerber files from the PCB design."
 ,,JLCPCB SMT assembly (per board),,$8-15,,,Depends on component count and stock. Basic parts are cheapest.
 ,,Boost module,,$1-2,,,MT3608 5-pack from Amazon ~$5
+,,LiPo cell (1S 2000 mAh 103450),,$8-12,,,"v3.1: rechargeable — replaces AAAs"
+,,TP4056 Type-C charger,,$0.50-2,,,"v3.1: comes in 15-packs, ~$0.50/ea"
+,,16x2 LCD + I2C backpack,,$3-5,,,"v3.1 default: cheap HD44780 LCD"
+,,(or) 16x2 character OLED,,$20-30,,,"v3.1 upgrade: Winstar / Newhaven / Matrix Orbital"
 ,,Cup adapter + pogo pins,,$3-5,,,3D print + 2 pogo pins + JST cable
-,,Enclosure,,$2-5,,,3D print or JLCPCB 3D printing
+,,Enclosure (base + lid),,$2-5,,,3D print (PETG recommended)
 ,,USB-C cable,,$0,,,(you already have one)
 ,,Programmer (one-time),,$35,,,MPLAB Snap — reusable for all future boards
 ,,,,,,,
-,,TOTAL PER UNIT (after first),,~$15-25,,,"Assembled PCB + module + adapter + enclosure"
-,,TOTAL FIRST BUILD,,~$50-60,,,"Add programmer cost. Boards come in pack of 5 so you have spares."
+,,TOTAL PER UNIT with LCD,,~$30-45,,,"Assembled PCB + boost + LiPo + TP4056 + LCD + adapter + enclosure"
+,,TOTAL PER UNIT with OLED,,~$45-70,,,"Same as above but swap LCD for character OLED"
+,,TOTAL FIRST BUILD,,~$75-105,,,"Add programmer cost. Boards come in pack of 5 so you have spares."

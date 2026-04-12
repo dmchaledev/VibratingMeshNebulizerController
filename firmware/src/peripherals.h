@@ -33,6 +33,19 @@ void     dac_set_value(uint8_t val);        /* Set DAC1 output (0-31, 5-bit) */
 /* ---- ADC ---- */
 uint16_t adc_read(uint8_t channel);         /* Read 10-bit ADC on given channel */
 
+/* ---- Battery monitoring ---- */
+#if BATTERY_ENABLED
+/* Read battery voltage in millivolts. Works by reading the internal FVR
+ * (Fixed Voltage Reference) with VDD as the ADC reference, then back-
+ * calculating VDD = Vbat. No external divider required. Returns 0 if the
+ * ADC reading is implausible. */
+uint16_t battery_read_mv(void);
+
+/* Convert millivolts to a 0-100% state-of-charge estimate using a
+ * piecewise-linear approximation of a typical LiPo discharge curve. */
+uint8_t  battery_percent(uint16_t mv);
+#endif
+
 /* ---- Timer ---- */
 void     timer1_start(void);
 void     timer1_stop(void);

@@ -90,6 +90,19 @@
 #define BOOST_MODE_MODULE       1
 #define BOOST_MODE              BOOST_MODE_MODULE   /* Turnkey build uses pre-built boost module */
 
+/* Boost voltage feedback diagnostic (MODULE build only).
+ *
+ * At startup and on every failed frequency sweep, the firmware reads the
+ * AN3 boost-feedback pin through the PCB's R5/R8 voltage divider and
+ * compares it against this threshold. A reading below the threshold means
+ * the boost module is likely off, disconnected, or its trim pot is set too
+ * low — the display shows "ERR Vboost low / Check boost mod" rather than
+ * the generic "ERR no cup" for easier first-power-up diagnosis.
+ *
+ * With the PCB's nominal divider (~10:1) and a 3.7 V battery, a healthy
+ * 12 V boost produces ~300 ADC counts. Set to 0 to disable the check. */
+#define BOOST_VFDBK_MIN_ADC     50      /* Raw ADC counts; <50 = likely no boost */
+
 /* =========================================================================
  * RESONANCE DETECTION
  *
@@ -151,6 +164,85 @@
 #define DRY_CUP_CONFIRM_MS     3000    /* Must stay low this long to confirm (ms) */
 
 /* =========================================================================
+ * BATTERY MONITORING
+ *
+ * The v3.1 turnkey build uses a rechargeable LiPo cell (3.7V nominal,
+ * 3.0-4.2V range) charged via a TP4056/DW01A module with USB-C input.
+ * The MCU is powered directly from the battery — VDD rails with Vbat.
+ *
+ * Rather than spending GPIOs on an external voltage divider, we use the
+ * PIC16F1713's Fixed Voltage Reference (FVR) as an ADC input channel.
+ * With VDD as the ADC reference and FVR=2.048V as the measured signal,
+ * we can back-calculate VDD (= Vbat) in firmware:
+ *
+ *     Vbat_mV  =  (FVR_mV * 1023)  /  ADC_reading
+ *
+ * Zero external components. ADC channel 31 is wired to the FVR internally.
+ *
+ * Thresholds for LiPo state-of-charge warnings. These are approximate —
+ * LiPo discharge curves are not linear and sag under load.
+ * ========================================================================= */
+#define BATTERY_ENABLED         1       /* 1 = monitor battery, 0 = skip */
+#define BATTERY_FULL_MV         4150    /* ~100% SOC */
+#define BATTERY_NOMINAL_MV      3700    /* ~50% SOC */
+#define BATTERY_LOW_MV          3500    /* ~20% SOC — start warning */
+#define BATTERY_CRIT_MV         3100    /* ~5% SOC — refuse start, auto-stop */
+#define BATTERY_SAMPLE_MS       1000    /* Sample every 1 second */
+
+/* FVR voltage selected for ADC input. PIC16F1713 FVRCON ADFVR bits:
+ *   01 = 1.024V (needs VDD >= ~1.5V)
+ *   10 = 2.048V (needs VDD >= ~2.5V) <-- chosen: works over full LiPo range
+ *   11 = 4.096V (needs VDD >= ~4.75V, NOT usable on LiPo) */
+#define FVR_MV                  2048
+#define ADC_CH_FVR              31      /* PIC16F1713 ADC internal FVR channel */
+
+/* =========================================================================
+ * CHARACTER DISPLAY (1602 I2C) — LCD or OLED
+ *
+ * This firmware supports two kinds of 16x2 character displays, both
+ * driven over the same bit-bang I2C bus through a PCF8574 backpack:
+ *
+ *   1. Classic HD44780 LCD (~$3-5).
+ *      Examples: any generic 1602 LCD + "LCD1602 IIC" backpack.
+ *      Set LCD_IS_OLED = 0.
+ *
+ *   2. Character OLED (~$20-30). Higher contrast, ~180° viewing angle,
+ *      self-emissive (no backlight), nicer aesthetic.
+ *      Examples: Winstar WEH001602 (WS0010 controller),
+ *                Newhaven NHD-0216AW (US2066 controller),
+ *                Matrix Orbital MOP-AO162 (US2066).
+ *      Set LCD_IS_OLED = 1. Requires the extended init sequence below.
+ *
+ * BOTH options speak the standard HD44780 4-bit command set for writes,
+ * so the same lcd_write_char / lcd_set_cursor / etc. code drives either.
+ * The only difference is the power-on initialization.
+ *
+ * If your character OLED is a "smart" serial module with a proprietary
+ * protocol (Matrix Orbital CFA series, etc.), you'll need a different
+ * driver entirely — it won't work with this code.
+ *
+ * The backpack usually uses address 0x27 (NXP) or 0x3F (TI variant).
+ * If your display stays blank, the init sequence auto-probes both.
+ *
+ * Display layout:
+ *   Line 1: state + frequency  (e.g., "RUN 128.5kHz    ")
+ *   Line 2: battery + elapsed  (e.g., "Bat 87%  14:32 ")
+ * ========================================================================= */
+#define LCD_ENABLED             1       /* 1 = drive display, 0 = headless */
+#define LCD_IS_OLED             1       /* 0 = HD44780 LCD, 1 = character OLED (Nimbus v3.1 default) */
+#define LCD_I2C_ADDR_7BIT       0x27    /* PCF8574 7-bit I2C address */
+#define LCD_I2C_ADDR_ALT_7BIT   0x3F    /* Alternate (some backpacks) */
+#define LCD_ROWS                2
+#define LCD_COLS                16
+#define LCD_UPDATE_MS           500     /* Refresh cadence (ms) */
+
+/* LCD backpack bit mapping on the PCF8574:
+ *   P0=RS  P1=RW  P2=EN  P3=BL  P4-P7=D4-D7
+ * On a character OLED the "backlight" bit is ignored by the controller,
+ * so leaving it asserted is harmless. */
+#define LCD_BL_BIT              0x08    /* Backlight on = bit 3 high */
+
+/* =========================================================================
  * PIN ASSIGNMENTS — PIC16F1713 DIP-28
  *
  * These match the wiring guide in hardware/WIRING.md.
@@ -170,8 +262,16 @@
 /* Digital inputs */
 #define BUTTON_PORT         PORTBbits.RB0       /* RB0 (pin 21) */
 
+/* LCD bit-bang I2C pins (open-drain, external pull-ups on LCD backpack) */
+#define LCD_SDA_TRIS        TRISCbits.TRISC4    /* RC4 (pin 15) — SDA */
+#define LCD_SDA_LAT         LATCbits.LATC4
+#define LCD_SDA_PORT        PORTCbits.RC4
+#define LCD_SCL_TRIS        TRISCbits.TRISC5    /* RC5 (pin 16) — SCL */
+#define LCD_SCL_LAT         LATCbits.LATC5
+#define LCD_SCL_PORT        PORTCbits.RC5
+
 /* Peripheral output pins (directly controlled by hardware peripherals) */
-/* RA4 (pin 6)  = CWG1A output — drives boost MOSFET Q2 gate */
+/* RA4 (pin 6)  = CWG1A output — drives boost MOSFET Q2 gate (discrete mode) */
 /* RC3 (pin 14) = NCO1 output  — drives output MOSFET Q4 gate */
 
 /* =========================================================================
@@ -182,5 +282,12 @@
  * ========================================================================= */
 #define UART_BAUD_RATE      9600
 #define UART_ENABLED        1           /* Set to 0 to disable */
+
+/* Helpful conversion macro — NCO increment register back to output Hz.
+ * freq_hz = NCO_INC * Fosc / 2^20 = NCO_INC * 16e6 / 2^20
+ *         = NCO_INC * 15625 / 1024   (exact integer form)
+ *
+ * Used by the LCD display to show the locked resonant frequency in kHz. */
+#define NCO_INC_TO_HZ(inc)  ((uint32_t)((uint32_t)(inc) * 15625UL / 1024UL))
 
 #endif /* CONFIG_H */
