@@ -96,7 +96,13 @@ lcd_backpack_drop     = 11.0;   // Distance backpack hangs below the LCD PCB
 
 lcd_viewing_w         = 72.0;   // Cutout width (generous fit around the glass)
 lcd_viewing_h         = 26.0;   // Cutout height
-lcd_window_offset_y   = 12.0;   // Window center offset (+Y = toward front wall)
+
+// LCD position on the lid. Because the LCD PCB (~80 mm wide) is nearly
+// as wide as the whole enclosure, it must be centered on the ENCLOSURE
+// (x = 0), not on the PCB cavity — otherwise the window and the left
+// mount standoff fall off the edge of the lid and break the seal.
+lcd_window_offset_x   =  0.0;   // Window center X (0 = enclosure center)
+lcd_window_offset_y   = 12.0;   // Window center Y (+Y = toward rear wall)
 
 // Mount holes (measured from LCD PCB center)
 lcd_mount_dx          = 75.0;   // X spacing between hole centers

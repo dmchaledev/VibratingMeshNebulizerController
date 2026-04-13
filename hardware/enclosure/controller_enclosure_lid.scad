@@ -47,8 +47,12 @@ module enclosure_lid() {
         }
 
         // === LCD viewing window ===
+        // Centered on the ENCLOSURE (lcd_window_offset_x = 0 by default),
+        // not on pcb_offset_x — the LCD is nearly as wide as the lid, so
+        // biasing it toward the PCB cavity would push the window past the
+        // left edge of the lid and break the perimeter seal.
         if (lcd_enable)
-            translate([pcb_offset_x, lcd_window_offset_y, -0.1])
+            translate([lcd_window_offset_x, lcd_window_offset_y, -0.1])
                 linear_extrude(height=wall_thickness + 0.2)
                     offset(r=0.8)
                         offset(delta=-0.8)
@@ -111,7 +115,7 @@ module enclosure_lid() {
 module lcd_standoffs() {
     for (sx = [-1, 1])
         for (sy = [-1, 1])
-            translate([pcb_offset_x + sx * lcd_mount_dx/2,
+            translate([lcd_window_offset_x + sx * lcd_mount_dx/2,
                        lcd_window_offset_y + sy * lcd_mount_dy/2,
                        wall_thickness])
                 cylinder(d=lcd_standoff_od, h=lcd_standoff_h);
@@ -120,7 +124,7 @@ module lcd_standoffs() {
 module lcd_mount_holes() {
     for (sx = [-1, 1])
         for (sy = [-1, 1])
-            translate([pcb_offset_x + sx * lcd_mount_dx/2,
+            translate([lcd_window_offset_x + sx * lcd_mount_dx/2,
                        lcd_window_offset_y + sy * lcd_mount_dy/2,
                        -0.1])
                 cylinder(d=lcd_mount_hole_dia,
