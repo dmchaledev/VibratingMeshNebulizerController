@@ -126,8 +126,10 @@ cable_exit_side     = "back";   // Which side the cable exits: "back" or "bottom
 strain_relief_enable = true;
 strain_relief_slot_w = 3.0;     // Width of zip-tie slot for strain relief (X extent = w*3)
 strain_relief_slot_d = 2.0;     // Depth of zip-tie slot (into back face, Y direction)
-strain_relief_slot_h = 1.2;     // Height of slot in Z — must stay below z=1.5 (cable exit
-                                 //   bottom) to avoid merging voids; 1.2 leaves 0.3mm gap
+strain_relief_slot_h = 0.9;     // Height of slot in Z — top must stay below z=1.5 (cable exit
+                                 //   bottom) to avoid merging voids; slot spans z=0.5 to z=1.4
+strain_relief_slot_z = 0.5;     // Z offset of slot bottom — raised off the flange bottom face
+                                 //   (z=0) to prevent co-planar impossible geometry
 
 // --- Grip features ---
 grip_ridges         = true;     // Add grip ridges on the flange sides
@@ -306,7 +308,7 @@ module strain_relief() {
         // Zip-tie slot behind the cable exit on the flange back face
         translate([pin_offset_x - strain_relief_slot_w * 1.5,
                    plug_flange_d/2 - strain_relief_slot_d,
-                   0])
+                   strain_relief_slot_z])
             cube([strain_relief_slot_w * 3, strain_relief_slot_d + 0.1, strain_relief_slot_h]);
     }
 }
