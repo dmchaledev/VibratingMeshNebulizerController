@@ -102,7 +102,7 @@ pogo_clearance      = 0.15;     // Print clearance around socket barrel
 
 // --- Plug body ---
 plug_clearance      = 0.3;      // Gap between plug and housing walls (for easy insertion)
-plug_flange_h       = 6.0;      // Flange thickness (sits outside housing, provides grip)
+plug_flange_h       = 7.0;      // Flange thickness (sits outside housing, provides grip)
 plug_flange_extra   = 2.5;      // How much flange extends past the outer housing per side
 plug_flange_r       = 2.0;      // Corner radius of flange (for grip comfort)
 
@@ -117,14 +117,17 @@ plug_total_h  = plug_flange_h + housing_total_h;
 
 // --- Cable exit ---
 cable_channel_w     = 5.0;      // Width of cable exit channel
-cable_channel_h     = 4.0;      // Height of cable exit channel (raised from 3.5 so wire channel
-                                 //   top at z=6.0 meets the pogo socket solder tail at z=6.0)
+cable_channel_h     = 3.5;      // Height of cable exit channel
+                                 //   Exit hole d = cable_channel_h+1 = 4.5mm, bottom always at z=1.5,
+                                 //   top at z=6.0 — leaves 1.0mm wall to flange top (z=7.0)
 cable_exit_side     = "back";   // Which side the cable exits: "back" or "bottom"
 
 // --- Strain relief ---
 strain_relief_enable = true;
-strain_relief_slot_w = 3.0;     // Width of zip-tie slot for strain relief
-strain_relief_slot_d = 2.0;     // Depth of zip-tie slot
+strain_relief_slot_w = 3.0;     // Width of zip-tie slot for strain relief (X extent = w*3)
+strain_relief_slot_d = 2.0;     // Depth of zip-tie slot (into back face, Y direction)
+strain_relief_slot_h = 1.2;     // Height of slot in Z — must stay below z=1.5 (cable exit
+                                 //   bottom) to avoid merging voids; 1.2 leaves 0.3mm gap
 
 // --- Grip features ---
 grip_ridges         = true;     // Add grip ridges on the flange sides
@@ -222,10 +225,10 @@ module socket_channels() {
             cylinder(d=socket_channel_d, h=plug_total_h + 0.2);
 
         // Wider recess at the flange bottom for solder cup / wire attachment.
-        // Socket solder tail sits at z=6.0 (socket length 16.5mm, top at z=22.5).
-        // Recess must extend to at least z=6.5 to expose the tail for soldering.
+        // With plug_flange_h=7.0: plug_total_h=23.5, socket solder tail at z=7.0.
+        // Recess extends to z=7.5 to expose the tail for pre-soldering.
         translate([x, y, -0.1])
-            cylinder(d=socket_channel_d + 2.0, h=6.6);
+            cylinder(d=socket_channel_d + 2.0, h=7.6);
 
         // Pin entry chamfer at the top (guides cup pin into socket)
         translate([x, y, plug_total_h - 0.5])
@@ -304,7 +307,7 @@ module strain_relief() {
         translate([pin_offset_x - strain_relief_slot_w * 1.5,
                    plug_flange_d/2 - strain_relief_slot_d,
                    0])
-            cube([strain_relief_slot_w * 3, strain_relief_slot_d + 0.1, strain_relief_slot_w]);
+            cube([strain_relief_slot_w * 3, strain_relief_slot_d + 0.1, strain_relief_slot_h]);
     }
 }
 
