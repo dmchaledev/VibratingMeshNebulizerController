@@ -117,7 +117,8 @@ plug_total_h  = plug_flange_h + housing_total_h;
 
 // --- Cable exit ---
 cable_channel_w     = 5.0;      // Width of cable exit channel
-cable_channel_h     = 3.5;      // Height of cable exit channel
+cable_channel_h     = 4.0;      // Height of cable exit channel (raised from 3.5 so wire channel
+                                 //   top at z=6.0 meets the pogo socket solder tail at z=6.0)
 cable_exit_side     = "back";   // Which side the cable exits: "back" or "bottom"
 
 // --- Strain relief ---
@@ -156,8 +157,9 @@ module plug_body() {
                 rounded_rect(plug_flange_w, plug_flange_d, plug_flange_h, plug_flange_r);
 
             // Outer section (fits into 10×8 outer housing)
+            // Shortened by 1mm so the step chamfer below is not buried inside this body.
             translate([0, 0, plug_flange_h])
-                rounded_rect(plug_outer_w, plug_outer_d, housing_outer_h, housing_corner_r);
+                rounded_rect(plug_outer_w, plug_outer_d, housing_outer_h - 1.0, housing_corner_r);
 
             // Step chamfer: taper from outer section to inner tongue
             translate([0, 0, plug_flange_h + housing_outer_h - 1.0])
@@ -219,9 +221,11 @@ module socket_channels() {
         translate([x, y, -0.1])
             cylinder(d=socket_channel_d, h=plug_total_h + 0.2);
 
-        // Wider recess at the flange bottom for solder cup / wire attachment
+        // Wider recess at the flange bottom for solder cup / wire attachment.
+        // Socket solder tail sits at z=6.0 (socket length 16.5mm, top at z=22.5).
+        // Recess must extend to at least z=6.5 to expose the tail for soldering.
         translate([x, y, -0.1])
-            cylinder(d=socket_channel_d + 2.0, h=4.1);
+            cylinder(d=socket_channel_d + 2.0, h=6.6);
 
         // Pin entry chamfer at the top (guides cup pin into socket)
         translate([x, y, plug_total_h - 0.5])
