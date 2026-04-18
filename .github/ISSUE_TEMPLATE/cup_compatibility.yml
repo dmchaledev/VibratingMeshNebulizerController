@@ -1,0 +1,63 @@
+name: Cup compatibility report
+description: Tell us how the controller behaves with a non-Aerogen cup
+labels: ["compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Compatibility data with non-Aerogen cups is sparse — your report
+        helps every other builder. Please be specific about what worked
+        and what didn't.
+
+  - type: input
+    id: cup_brand
+    attributes:
+      label: Cup brand
+      placeholder: "OMRON / PARI / Philips / DeVilbiss / other"
+    validations:
+      required: true
+
+  - type: input
+    id: cup_model
+    attributes:
+      label: Cup model number
+      placeholder: "MicroAir U22, eFlow Rapid, ..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Outcome
+      options:
+        - Works as-is with default config
+        - Works after tuning config (describe below)
+        - Resonance found but unstable
+        - No resonance found
+        - Damaged the cup or controller (please describe — this is important)
+    validations:
+      required: true
+
+  - type: input
+    id: resonance
+    attributes:
+      label: Detected resonant frequency (kHz)
+      placeholder: "e.g. 117.5"
+
+  - type: textarea
+    id: config
+    attributes:
+      label: config.h changes
+      description: Paste any non-default values you used.
+      render: c
+
+  - type: textarea
+    id: adapter
+    attributes:
+      label: Adapter / connector notes
+      description: How did you make electrical contact with the cup pins?
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Other notes

@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'hardware/**/*.scad'
+      - '.github/workflows/openscad.yml'
   pull_request:
     paths:
       - 'hardware/**/*.scad'
+      - '.github/workflows/openscad.yml'
 
 jobs:
   validate:
@@ -18,11 +20,32 @@ jobs:
       - name: Install OpenSCAD
         run: sudo apt-get update && sudo apt-get install -y openscad xvfb
 
-      - name: Validate aerogen_connector_plug.scad
-        run: xvfb-run openscad -o /dev/null hardware/adapters/aerogen_connector_plug.scad
-
-      - name: Validate universal_adapter.scad
-        run: xvfb-run openscad -o /dev/null hardware/adapters/universal_adapter.scad
-
-      - name: Validate controller_enclosure.scad
-        run: xvfb-run openscad -o /dev/null hardware/enclosure/controller_enclosure.scad
+      - name: Render every .scad file under hardware/
+        # Render each .scad to STL so syntax, missing includes, and
+        # unresolved variables all surface as a non-zero exit. Files
+        # named *_config.scad and *_common.scad are include-only and
+        # rendered indirectly by their consumers, so we skip them.
+        run: |
+          set -euo pipefail
+          shopt -s globstar nullglob
+          failures=0
+          for f in hardware/**/*.scad; do
+            base=$(basename "$f")
+            case "$base" in
+              *_config.scad|*_common.scad)
+                echo "SKIP  $f  (include-only)"
+                continue
+                ;;
+            esac
+            echo "RENDER $f"
+            if ! xvfb-run --auto-servernum openscad \
+                --hardwarnings \
+                -o "/tmp/$(basename "$f" .scad).stl" "$f"; then
+              echo "::error file=$f::OpenSCAD render failed"
+              failures=$((failures + 1))
+            fi
+          done
+          if [ "$failures" -ne 0 ]; then
+            echo "::error::$failures .scad file(s) failed to render"
+            exit 1
+          fi

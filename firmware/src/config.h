@@ -11,6 +11,17 @@
 #define CONFIG_H
 
 /* =========================================================================
+ * FIRMWARE VERSION
+ *
+ * Single source of truth for the version string. Bump this on every
+ * release and update CHANGELOG.md to match. Used by main.c for the
+ * splash screen and UART banner, and by tests / bug reports for triage.
+ * ========================================================================= */
+#define FIRMWARE_VERSION_MAJOR  3
+#define FIRMWARE_VERSION_MINOR  1
+#define FIRMWARE_VERSION        "v3.1"
+
+/* =========================================================================
  * CLOCK CONFIGURATION
  * The PIC16F1713 internal oscillator runs at 16 MHz (HFINTOSC).
  * All frequency calculations below assume Fosc = 16 MHz.
@@ -229,7 +240,7 @@
  *   Line 2: battery + elapsed  (e.g., "Bat 87%  14:32 ")
  * ========================================================================= */
 #define LCD_ENABLED             1       /* 1 = drive display, 0 = headless */
-#define LCD_IS_OLED             1       /* 0 = HD44780 LCD, 1 = character OLED (Nimbus v3.1 default) */
+#define LCD_IS_OLED             1       /* 0 = HD44780 LCD, 1 = character OLED (default) */
 #define LCD_I2C_ADDR_7BIT       0x27    /* PCF8574 7-bit I2C address */
 #define LCD_I2C_ADDR_ALT_7BIT   0x3F    /* Alternate (some backpacks) */
 #define LCD_ROWS                2

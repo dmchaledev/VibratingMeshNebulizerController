@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Safety / security report
+    url: https://github.com/dmchaledev/VibratingMeshNebulizerController/security/advisories/new
+    about: >-
+      Report a SAFETY hazard (uncontrolled boost, missing battery cutoff,
+      runaway timer, etc.) privately. Do NOT open a public issue for these.
+  - name: Read the disclaimer
+    url: https://github.com/dmchaledev/VibratingMeshNebulizerController/blob/main/DISCLAIMER.md
+    about: This is not an FDA-approved device. Read DISCLAIMER.md before posting.

@@ -144,8 +144,12 @@ magnet_diameter     = 6.0;
 magnet_thickness    = 2.0;
 
 use_dovetail        = true;     // Dovetail for enclosure mounting
-dovetail_width      = 10.0;
-dovetail_height     = 4.0;
+dovetail_width      = 10.0;     // Width of the NARROW (bottom) face
+dovetail_height     = 4.0;      // How far the rail sticks below the base
+dovetail_taper      = 1.5;      // Extra width per side at the TOP face — the
+                                // top is therefore (width + 2*taper) wide.
+                                // Cut a matching trapezoidal slot in the
+                                // mounting plate to hold the adapter down.
 
 $fn = 64;
 
@@ -332,11 +336,20 @@ module entry_chamfer() {
  * ===================================================================== */
 
 module dovetail_rail() {
+    /* True trapezoidal dovetail: the bottom face is `dovetail_width`
+     * wide and the top (where it meets the adapter base) is wider by
+     * `dovetail_taper` per side, so a matching slot in the enclosure
+     * holds the adapter from sliding off vertically. The previous
+     * version was just a rectangular bar — visually a "rail" but
+     * mechanically not a dovetail at all. */
     if (use_dovetail) {
         rail_length = cradle_od * 0.8;
+        bottom_w = dovetail_width;
+        top_w    = dovetail_width + dovetail_taper * 2;
+
         translate([0, 0, -dovetail_height])
-            linear_extrude(height=dovetail_height)
-                square([rail_length, dovetail_width], center=true);
+            linear_extrude(height=dovetail_height, scale=[1, top_w / bottom_w])
+                square([rail_length, bottom_w], center=true);
     }
 }
 

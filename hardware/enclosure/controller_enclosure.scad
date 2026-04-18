@@ -146,6 +146,10 @@ module icsp_cutout() {
 
 module pcb_standoffs() {
     standoff_od = mount_hole_diameter + 3.0;
+    /* Sink each standoff base 0.05 mm into the floor so CGAL fuses them
+     * to the enclosure body in the union — without the overlap each
+     * standoff renders as its own disconnected volume. */
+    overlap = 0.05;
     positions = [
         [pcb_offset_x - pcb_width/2 + mount_hole_inset_x,
          -pcb_depth/2 + mount_hole_inset_y],
@@ -158,11 +162,11 @@ module pcb_standoffs() {
     ];
 
     for (pos = positions) {
-        translate([pos[0], pos[1], wall_thickness]) {
+        translate([pos[0], pos[1], wall_thickness - overlap]) {
             difference() {
-                cylinder(d=standoff_od, h=mount_standoff_h);
+                cylinder(d=standoff_od, h=mount_standoff_h + overlap);
                 translate([0, 0, -0.1])
-                    cylinder(d=mount_hole_diameter, h=mount_standoff_h + 0.2);
+                    cylinder(d=mount_hole_diameter, h=mount_standoff_h + overlap + 0.2);
             }
         }
     }
@@ -180,12 +184,13 @@ module pcb_standoffs() {
 module battery_ribs() {
     rib_h = 2.0;
     rib_w = 1.5;
+    overlap = 0.05;     /* Sink into the floor so CGAL fuses the ribs */
 
     for (side = [-1, 1]) {
         translate([bat_offset_x + side * (lipo_w/2),
                    -lipo_d/4,
-                   wall_thickness])
-            cube([rib_w, lipo_d/2, rib_h]);
+                   wall_thickness - overlap])
+            cube([rib_w, lipo_d/2, rib_h + overlap]);
     }
 }
 
@@ -212,12 +217,14 @@ module tp4056_shelf() {
     }
 
     // Small locating ribs around the TP4056 PCB footprint so it
-    // doesn't float around on top of the shelf.
+    // doesn't float around on top of the shelf. Sink the rib bases
+    // 0.05 mm into the shelf so CGAL fuses them in the union.
+    overlap = 0.05;
     for (side = [-1, 1]) {
         translate([bat_offset_x + side * (tp4056_w/2),
                    -tp4056_d/4,
-                   z_shelf + tp4056_shelf_t])
-            cube([1.2, tp4056_d/2, 2.0]);
+                   z_shelf + tp4056_shelf_t - overlap])
+            cube([1.2, tp4056_d/2, 2.0 + overlap]);
     }
 }
 
