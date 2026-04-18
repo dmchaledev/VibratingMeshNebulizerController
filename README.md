@@ -85,7 +85,9 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 │   ├── BUILD_GUIDE.md        ← Turnkey build guide and nursery durability tips
 │   ├── DIAGRAMS.md           ← Visual diagrams (state machine, signal flow, etc.)
 │   ├── JLCPCB_ORDERING_GUIDE.md ← How to order pre-assembled PCBs from JLCPCB
-│   └── BOM_TURNKEY.csv       ← Bill of materials — JLCPCB assembled build (~$15-25/board)
+│   ├── BOM_TURNKEY.csv       ← Bill of materials — JLCPCB assembled build (~$15-25/board)
+│   ├── SHOPPING_LIST.md      ← Where to buy every part, organised per supplier
+│   └── IMPROVEMENTS.md       ← External review: suggested repo/design improvements
 ├── firmware/
 │   ├── README.md             ← How to compile and flash
 │   └── src/
@@ -111,7 +113,7 @@ This controller drives a PZT piezoelectric ring at its resonant frequency — th
 
 1. **Read [DISCLAIMER.md](DISCLAIMER.md)** — understand what you're building
 2. **Order the PCB** — follow [docs/JLCPCB_ORDERING_GUIDE.md](docs/JLCPCB_ORDERING_GUIDE.md), JLCPCB assembles the board for you
-3. **Order parts** — boost module, pogo pins, JST cables, screws (see [docs/BOM_TURNKEY.csv](docs/BOM_TURNKEY.csv))
+3. **Order parts** — copy the per-supplier cart from [docs/SHOPPING_LIST.md](docs/SHOPPING_LIST.md) (boost module, LiPo, TP4056, pogo pins, cables, screws). Full authoritative BOM in [docs/BOM_TURNKEY.csv](docs/BOM_TURNKEY.csv).
 4. **3D print** the connector plug and enclosure from [hardware/](hardware/)
 5. **Compile and flash** firmware per [firmware/README.md](firmware/README.md) (default config is ready to go)
 6. **Assemble** — mount PCB in enclosure, plug in boost module and connector cable
