@@ -369,7 +369,7 @@ void main(void)
     lcd_present = lcd_init();
     if (lcd_present) {
         lcd_show_message("Nimbus Nebulizer",
-                         " Controller v3.1");
+                         " Controller " FIRMWARE_VERSION);
     }
     lcd_refresh_cooldown_ms = 1500;   /* Hold the splash ~1.5 s */
 #endif
@@ -380,7 +380,7 @@ void main(void)
     led_red_off();
     delay_ms(250);
 
-    uart_send_string("\r\n=== Nimbus Nebulizer Controller v3.1 ===\r\n");
+    uart_send_string("\r\n=== Nimbus Nebulizer Controller " FIRMWARE_VERSION " ===\r\n");
 #if BATTERY_ENABLED
     uart_send_string("Battery: ");
     uart_send_uint16(batt_mv);

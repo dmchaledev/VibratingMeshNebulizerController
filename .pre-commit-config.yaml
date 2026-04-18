@@ -1,0 +1,59 @@
+# pre-commit hooks for the Nimbus Nebulizer Controller.
+#
+# Install once:
+#     pip install pre-commit
+#     pre-commit install
+#
+# After that, every `git commit` runs the hooks below on changed files.
+# Run on the whole repo any time with:
+#     pre-commit run --all-files
+
+repos:
+  # ---- Generic file hygiene -------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(.+\.scad)$   # SCAD files sometimes intentionally pad
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-yaml
+      - id: check-json
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+
+  # ---- Markdown lint --------------------------------------------------------
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.18.1
+    hooks:
+      - id: markdownlint-cli2
+        args: ["--config", ".markdownlint.json"]
+
+  # ---- Firmware static analysis --------------------------------------------
+  # Mirrors .github/workflows/firmware-check.yml so problems are caught
+  # before they hit CI. Requires `cppcheck` on $PATH.
+  - repo: local
+    hooks:
+      - id: cppcheck-firmware
+        name: cppcheck (firmware/src)
+        entry: cppcheck
+        language: system
+        files: ^firmware/src/.*\.[ch]$
+        args:
+          - --enable=warning,performance,portability
+          - --suppress=missingIncludeSystem
+          - --error-exitcode=1
+          - --inline-suppr
+          - --quiet
+          - firmware/src/
+
+      - id: firmware-tests
+        name: firmware host-side tests
+        entry: make -C firmware/tests
+        language: system
+        files: ^firmware/(src|tests)/.*\.[ch]$
+        pass_filenames: false

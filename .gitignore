@@ -17,6 +17,11 @@ build/
 debug/
 release/
 
+# pre-commit / Python tooling
+.venv/
+__pycache__/
+*.py[cod]
+
 # XC8 compiler
 *.p1
 *.d

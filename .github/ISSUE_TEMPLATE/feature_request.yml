@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest a firmware, hardware, or documentation improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: |
+        Describe the use case, not the implementation. We can iterate on
+        the design once we agree the underlying problem is worth solving.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Optional. Sketch what the change would look like.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Firmware
+        - Hardware (PCB / electronics)
+        - Hardware (3D-printed parts)
+        - Documentation
+        - Build / packaging / CI
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about and why they were worse.
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety review
+      options:
+        - label: This change does not weaken the safety guards listed in SECURITY.md
+          required: true

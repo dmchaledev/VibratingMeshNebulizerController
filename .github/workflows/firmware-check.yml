@@ -1,12 +1,14 @@
-name: Firmware Static Analysis
+name: Firmware Static Analysis & Tests
 
 on:
   push:
     paths:
       - 'firmware/**'
+      - '.github/workflows/firmware-check.yml'
   pull_request:
     paths:
       - 'firmware/**'
+      - '.github/workflows/firmware-check.yml'
 
 jobs:
   cppcheck:
@@ -27,3 +29,12 @@ jobs:
             --inline-suppr \
             --quiet \
             firmware/src/
+
+  unit-tests:
+    name: Host-side unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and run firmware unit tests
+        run: make -C firmware/tests

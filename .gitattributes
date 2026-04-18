@@ -1,2 +1,34 @@
 # Auto detect text files and perform LF normalization
-* text=auto
+* text=auto eol=lf
+
+# Source code — always LF, even on Windows checkouts
+*.c        text eol=lf
+*.h        text eol=lf
+*.scad     text eol=lf
+*.md       text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+*.json     text eol=lf
+*.csv      text eol=lf
+Makefile   text eol=lf
+*.mk       text eol=lf
+
+# Windows-only files
+*.bat      text eol=crlf
+*.cmd      text eol=crlf
+
+# Binary assets — never normalize, never diff as text
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.pdf      binary
+*.stl      binary
+*.gcode    binary
+*.3mf      binary
+*.zip      binary
+*.tar.gz   binary
+*.AppImage binary
+*.hex      binary
+*.elf      binary
+*.cof      binary

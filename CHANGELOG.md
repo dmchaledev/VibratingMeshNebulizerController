@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- `CONTRIBUTING.md` describing the PR process, code style, and local
+  check workflow.
+- `SECURITY.md` with a coordinated-disclosure policy for safety bugs.
+- `firmware/Makefile` — auto-discovers every source under `firmware/src/`
+  so adding a new `.c` no longer requires editing the build command.
+- `firmware/tests/` — host-side unit tests for the NCO ↔ Hz config
+  macros, the LiPo SOC curve in `peripherals.c`, and the LCD line
+  formatters in `lcd.c`. Wired into the existing firmware CI workflow.
+- `.pre-commit-config.yaml` running markdownlint, cppcheck, and the
+  firmware tests locally on every commit.
+- `.github/ISSUE_TEMPLATE/` (bug, feature, cup-compatibility) and
+  `.github/pull_request_template.md`, both surfacing the safety review
+  checklist.
+- `hardware/README.md` documenting where each design file lives and
+  how to render the OpenSCAD models.
+- `FIRMWARE_VERSION` macro in `config.h` so the splash screen and UART
+  banner read from one source of truth.
+
+### Changed
+- `firmware/README.md` build instructions now include `lcd.c`/`lcd.h`
+  (added in v3.1) and reference the new Makefile.
+- `.github/workflows/openscad.yml` now renders **every** `.scad` under
+  `hardware/` instead of an explicit list, so new models can't slip
+  past CI. `*_config.scad` / `*_common.scad` are skipped as include-only.
+- `.gitattributes` now marks binary asset types (`.png`, `.pdf`, `.stl`,
+  `.gcode`, `.AppImage`, etc.) explicitly so Git stops trying to
+  diff/normalize them, and pins all source files to LF line endings.
+
+### Fixed
+- Lid LCD standoffs were touching the lid plate at exactly the same
+  z-plane and rendered as four floating volumes — slicers could
+  silently drop them. They now overlap the plate by 0.05 mm and fuse
+  cleanly (`controller_enclosure_lid.scad`).
+- Same fusion fix applied to PCB standoffs, LiPo retaining ribs, and
+  TP4056 locating ribs in `controller_enclosure.scad`.
+- "VMN" lid label was recessed into the *inner* face of the lid, where
+  it can't be seen. Moved it to the outer face so it's visible after
+  printing upside-down (`controller_enclosure_lid.scad`).
+- Universal adapter "dovetail" was a plain rectangular bar that didn't
+  actually dovetail. Now extrudes a true trapezoidal profile via a new
+  `dovetail_taper` parameter (`universal_adapter.scad`).
+
 ## [3.1] — 2026-04-12 (updated 2026-04-12)
 
 Quality-of-life build for daily nursery use: rechargeable cell, USB-C

@@ -14,16 +14,31 @@
 - **MPLAB Snap** (~$35, DigiKey PG164100-ND) or **PICkit 4** (~$60) or **PICkit 5** (~$90)
 - 5-wire connection from programmer to PIC16F1713 ICSP pins (see [hardware/WIRING.md](../hardware/WIRING.md))
 
+## Quick Start (Make)
+
+The repo ships with a Makefile that wraps the XC8 invocation:
+
+```bash
+cd firmware
+make            # → firmware/build/nebulizer.hex
+make program    # → flashes via MPLAB Snap (set PROGRAMMER=pickit4 etc.)
+make clean
+```
+
+The Makefile auto-discovers every `.c` file in `src/`, so new sources
+(such as `lcd.c` added in v3.1) are picked up without edits.
+
 ## Quick Start (Command Line)
 
-If you prefer the command line over the IDE:
+If you'd rather call the compiler directly:
 
 ```bash
 # Navigate to the firmware source directory
 cd firmware/src
 
-# Compile (adjust the XC8 path if needed)
-xc8-cc -mcpu=16F1713 -O1 -o nebulizer.hex main.c peripherals.c sweep.c
+# Compile (adjust the XC8 path if needed). Pass every .c source.
+xc8-cc -mcpu=16F1713 -O1 -o nebulizer.hex \
+    main.c peripherals.c sweep.c lcd.c
 
 # Program the chip (with MPLAB Snap connected via USB)
 # Use MPLAB IPE (Integrated Programming Environment) or:
@@ -50,11 +65,13 @@ mdb.sh -e "device PIC16F1713; hwtool snap; program nebulizer.hex; quit"
    - `main.c`
    - `peripherals.c`
    - `sweep.c`
+   - `lcd.c`
 3. Right-click "Header Files" > Add Existing Item
 4. Add all `.h` files:
    - `config.h`
    - `peripherals.h`
    - `sweep.h`
+   - `lcd.h`
 
 ### Compile
 
@@ -90,9 +107,10 @@ If you'd rather use the original reference code:
 
 | File | Purpose |
 |------|---------|
-| `config.h` | All tunable parameters — frequencies, voltages, timing. **Edit this first.** |
+| `config.h` | All tunable parameters — frequencies, voltages, timing, firmware version. **Edit this first.** |
 | `peripherals.h/c` | PIC16F1713 hardware initialization (oscillator, NCO, DAC, ADC, CWG, GPIO, UART) |
 | `sweep.h/c` | Frequency sweep algorithm — scans for PZT resonance |
+| `lcd.h/c` | Bit-bang I2C driver for the 16x2 character LCD/OLED on the lid |
 | `main.c` | State machine: idle → sweep → run → stop. Button handling, treatment timer, LED control |
 
 ## Adjusting Parameters

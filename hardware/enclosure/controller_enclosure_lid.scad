@@ -95,8 +95,13 @@ module enclosure_lid() {
                       wall_thickness + 0.2,
                       lid_lip_height + 0.3]);
 
-        // === Label recess — small "VMN" text embossed into the lid ===
-        translate([pcb_offset_x, -ext_depth/2 + 6, wall_thickness - 0.4])
+        // === Label recess — small "VMN" text on the OUTER lid face ===
+        // The lid is printed upside down (outer face on the build plate),
+        // so the outer face is at z = 0 in the model. Recess the text from
+        // there into the plate so it's visible after flipping. The previous
+        // version recessed at z = wall_thickness - 0.4, which put the text
+        // on the INNER face and made it invisible from outside.
+        translate([pcb_offset_x, -ext_depth/2 + 6, -0.1])
             linear_extrude(height=0.5)
                 text("VMN", size=4.5, halign="center", valign="center",
                      font="Liberation Sans:style=Bold");
@@ -113,12 +118,17 @@ module enclosure_lid() {
  * ===================================================================== */
 
 module lcd_standoffs() {
+    /* Start the standoff base 0.05 mm INSIDE the lid plate (not at exactly
+     * z = wall_thickness) so the CGAL union fuses standoff geometry to
+     * the plate. Without the overlap each standoff renders as its own
+     * disconnected volume — slicers may then drop the floating posts. */
+    overlap = 0.05;
     for (sx = [-1, 1])
         for (sy = [-1, 1])
             translate([lcd_window_offset_x + sx * lcd_mount_dx/2,
                        lcd_window_offset_y + sy * lcd_mount_dy/2,
-                       wall_thickness])
-                cylinder(d=lcd_standoff_od, h=lcd_standoff_h);
+                       wall_thickness - overlap])
+                cylinder(d=lcd_standoff_od, h=lcd_standoff_h + overlap);
 }
 
 module lcd_mount_holes() {
